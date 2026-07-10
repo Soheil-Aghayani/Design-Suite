@@ -379,13 +379,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  async function resolveSteamWishlistUrl(steamid) {
+    const apiKey = localStorage.getItem('steam_api_key') || '';
+    if (apiKey && steamid.match(/^\d{17}$/)) {
+      try {
+        const summariesUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steamid}`;
+        const data = await fetchWithProxyFallback(summariesUrl);
+        if (data && data.response && data.response.players && data.response.players.length > 0) {
+          const player = data.response.players[0];
+          const profileUrl = player.profileurl || '';
+          const match = profileUrl.match(/\/id\/([^\/]+)/);
+          if (match && match[1]) {
+            return `https://store.steampowered.com/wishlist/id/${match[1]}/wishlistdata/`;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to resolve vanity URL via player summaries, falling back to profiles url.", e);
+      }
+    }
+    
+    // Default fallback
+    if (steamid.match(/^\d{17}$/)) {
+      return `https://store.steampowered.com/wishlist/profiles/${steamid}/wishlistdata/`;
+    } else {
+      return `https://store.steampowered.com/wishlist/id/${steamid}/wishlistdata/`;
+    }
+  }
+
   async function fetchWithProxyFallback(url) {
     const proxies = [
-      // 1. corsproxy.io (fastest client-side proxy in browser)
+      // 1. Direct fetch (fastest, uses user's cookies/session, works if browser CORS is bypassed/disabled)
+      url,
+      // 2. corsproxy.io (client-side proxy)
       `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      // 2. codetabs (reliable secondary)
+      // 3. codetabs (secondary proxy)
       `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-      // 3. allorigins (wrapped JSONP fallback, slower but highly reliable)
+      // 4. thingproxy (alternative proxy)
+      `https://thingproxy.freeboard.io/fetch/${url}`,
+      // 5. allorigins (reliable wrapped JSONP fallback)
       `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
     ];
 
@@ -906,8 +937,8 @@ document.addEventListener('DOMContentLoaded', () => {
     wishlistContainer.style.display = "block";
 
     try {
-      // Fetch wishlist from Steam storefront API
-      const wishlistUrl = `https://store.steampowered.com/wishlist/profiles/${steamid}/wishlistdata/`;
+      // Resolve vanity URL if needed, then fetch wishlist from Steam storefront API
+      const wishlistUrl = await resolveSteamWishlistUrl(steamid);
       const data = await fetchWithProxyFallback(wishlistUrl);
 
       if (data && Object.keys(data).length > 0) {
