@@ -1,15 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // LocalStorage helper functions
+  const getLocalFloat = (key, fallback) => {
+    const val = localStorage.getItem(key);
+    return (val !== null && !isNaN(parseFloat(val))) ? parseFloat(val) : fallback;
+  };
+  const getLocalInt = (key, fallback) => {
+    const val = localStorage.getItem(key);
+    return (val !== null && !isNaN(parseInt(val, 10))) ? parseInt(val, 10) : fallback;
+  };
+  const getLocalString = (key, fallback) => {
+    const val = localStorage.getItem(key);
+    return val !== null ? val : fallback;
+  };
+
   // --- STATE ---
   let state = {
-    gamePrice: 1200.00, // in Steam currency (e.g. UAH)
-    walletBalance: 0.00, // in Steam currency
-    currencyCode: "UAH",
-    currencySymbol: "₴",
-    currencyDecimals: 2,
+    gamePrice: getLocalFloat('state_game_price', 1200.00), // in Steam currency (e.g. UAH)
+    walletBalance: getLocalFloat('state_wallet_balance', 0.00), // in Steam currency
+    currencyCode: getLocalString('state_currency_code', 'UAH'),
+    currencySymbol: getLocalString('state_currency_symbol', '₴'),
+    currencyDecimals: getLocalInt('state_currency_decimals', 2),
     
-    keyBuyPrice: 110000, // in Toman
-    keySellPrice: 105.00, // Listing price (what buyer pays) in Steam currency
-    isBuyerPays: true,
+    keyBuyPrice: getLocalInt('state_key_buy_price', 110000), // in Toman
+    keySellPrice: getLocalFloat('state_key_sell_price', 105.00), // Listing price (what buyer pays) in Steam currency
+    isBuyerPays: getLocalString('state_is_buyer_pays', 'true') === 'true',
 
     // Steam Profile Setup (Saved locally in browser)
     steamApiKey: localStorage.getItem('steam_api_key') || '',
@@ -149,6 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- CORE RECALCULATIONS ---
   
   function updateCalculations() {
+    // Save state to localStorage for persistence ("memory")
+    localStorage.setItem('state_game_price', state.gamePrice);
+    localStorage.setItem('state_wallet_balance', state.walletBalance);
+    localStorage.setItem('state_currency_code', state.currencyCode);
+    localStorage.setItem('state_currency_symbol', state.currencySymbol);
+    localStorage.setItem('state_currency_decimals', state.currencyDecimals);
+    localStorage.setItem('state_key_buy_price', state.keyBuyPrice);
+    localStorage.setItem('state_key_sell_price', state.keySellPrice);
+    localStorage.setItem('state_is_buyer_pays', state.isBuyerPays);
+
     let buyPrice = state.keyBuyPrice;
     let sellPrice = state.keySellPrice;
     let walletValuePerKey = 0;
