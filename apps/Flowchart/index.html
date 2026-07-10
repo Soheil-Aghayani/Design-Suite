@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal Flowchart Designer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-Style Toolbox -->
+    <div class="left-toolbar">
+      <div class="toolbar-section">
+        <button class="tool-btn active" id="tool-select" data-tooltip="Select Box (V)">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.89 20.47l1.86-5.11 3.51 3.51c.39.39 1.03.39 1.42 0l1.42-1.42c.39-.39.39-1.02 0-1.42l-3.51-3.51 5.11-1.86c.63-.23.63-1.12 0-1.35L4.41 3.23c-.56-.2-1.12.36-.91.91l6.04 15.29c.23.64 1.12.64 1.35.04z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="tool-connect" data-tooltip="Connect Boxes (C)">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18 9c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-6 6c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-6 6c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm10-12h-4v2h4v-2zm-6 6H4v2h4v-2z"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <div class="toolbar-section">
+        <button class="tool-btn" id="undo-btn" data-tooltip="Undo (Ctrl+Z)" disabled style="opacity: 0.5; cursor: not-allowed;">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="redo-btn" data-tooltip="Redo (Ctrl+Y / Ctrl+Shift+Z)" disabled style="opacity: 0.5; cursor: not-allowed;">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+      
+      <div class="toolbar-section">
+        <button class="tool-btn" id="zoom-in-btn" data-tooltip="Zoom In">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zm.5-7H9v2H7v1h2v2h1v-2h2V9h-2V7z"/>
+          </svg>
+        </button>
+        <span class="zoom-display" id="zoom-display-text" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); user-select: none;">100%</span>
+        <button class="tool-btn" id="zoom-out-btn" data-tooltip="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14zM7 9h5v1H7V9z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="zoom-reset-btn" data-tooltip="Reset Zoom & Pan">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15 3h6v6h-2V6.41l-4.79 4.79-1.41-1.41L17.59 5H15V3zM9 21H3v-6h2v2.59l4.79-4.79 1.41 1.41L6.41 19H9v2zM21 15v6h-6v-2h2.59l-4.79-4.79 1.41-1.41 4.79 4.79V15h2zM3 9V3h6v2H6.41l4.79 4.79-1.41 1.41L5 6.41V9H3z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <div class="toolbar-section">
+        <button class="tool-btn" id="theme-toggle-btn" data-tooltip="Toggle Theme">
+          <svg id="sun-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/>
+          </svg>
+          <svg id="moon-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+            <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider" style="margin-top: auto;"></div>
+
+      <div class="toolbar-section" style="margin-top: auto;">
+        <button class="tool-btn" id="shortcuts-btn" data-tooltip="Keyboard Shortcuts (?)">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-2h2v2zm1.07-7.75l-.9.92C12.45 11.9 12 12.5 12 14h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="clear-labels-btn" data-tooltip="Clear Text Labels">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16.24 7.56l-5.66-5.66c-.78-.78-2.05-.78-2.83 0L2.09 7.56c-.78.78-.78 2.05 0 2.83l5.66 5.66c.39.39.9.59 1.41.59s1.02-.2 1.41-.59l5.66-5.66c.79-.78.79-2.05 0-2.83zm-8.49-4.24l4.24 4.24H5.91L7.75 3.32zM12 18.25h8v1.5h-8z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="tidy-layout-btn" data-tooltip="Tidy Spacing (Align to Grid)">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0 12c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="reset-layout-btn" data-tooltip="Reset Flowchart">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm-5.3 2.2L5.24 5.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v-3l4 4-4 4v-3c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Canvas / Flowchart Display Area -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+      
+      <div class="canvas-viewport">
+        <!-- Flowchart SVG Container -->
+        <svg id="flowchart-svg" viewBox="0 0 1400 900" width="100%" height="100%">
+          <!-- Definitions (Arrow markers, grids, etc.) -->
+          <defs>
+            <!-- Marker for line arrows -->
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path class="arrow-head" d="M 0 1.5 L 8 5 L 0 8.5 Z" />
+            </marker>
+            <!-- Marker for line dots -->
+            <marker id="marker-dot" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <circle class="arrow-head" cx="5" cy="5" r="3.5" />
+            </marker>
+          </defs>
+          
+          <!-- SVG content generated by script.js -->
+          <g id="connectors-group"></g>
+          <g id="nodes-group"></g>
+        </svg>
+      </div>
+
+      <!-- Floating canvas Mini-Map Navigator -->
+      <div class="minimap-container minimized" id="canvas-minimap">
+        <div class="minimap-header">
+          <span>Navigator</span>
+          <button id="minimap-toggle-btn" class="minimap-toggle-btn" title="Toggle Navigator">&#43;</button>
+        </div>
+        <div class="minimap-body">
+          <svg id="minimap-svg" viewBox="0 0 1400 900">
+            <g id="minimap-nodes-group"></g>
+            <rect id="minimap-viewport-indicator" fill="rgba(59, 130, 246, 0.18)" stroke="#3b82f6" stroke-width="4" cursor="move" />
+          </svg>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Structure Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-structure" data-tab="tab-structure">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16zm0-11.47L17.74 9 12 13.57 6.26 9 12 4.53z"/>
+          </svg>
+          Structure
+        </button>
+        <button class="tab-btn" id="tab-btn-properties" data-tab="tab-properties">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 17v2h6v-2H3zm0-12v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>
+          </svg>
+          Inspector
+        </button>
+      </div>
+
+      <!-- Tab Content: Structure -->
+      <div class="sidebar-tab-content active" id="tab-structure">
+        <div class="input-group">
+          <div class="input-section-title">Structure</div>
+          <!-- Node Search Bar -->
+          <div class="search-container" style="margin-bottom: 12px; position: relative;">
+            <input type="text" id="node-search-input" class="text-input" placeholder="Search & locate boxes..." autocomplete="off" style="padding: 8px 30px 8px 10px; font-size: 12px; width: 100%; box-sizing: border-box;">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-secondary); pointer-events: none;">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          <div id="structure-container" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Generated dynamically by script.js -->
+          </div>
+          <button class="btn" id="add-column-btn" style="margin-top: 4px; padding: 8px;">
+            + Add Column
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Properties -->
+      <div class="sidebar-tab-content" id="tab-properties">
+        <!-- Context Aware Selection Settings -->
+        <div id="selection-settings-container">
+          <!-- Filled dynamically by JavaScript when nodes are selected -->
+        </div>
+
+        <!-- Global Canvas Settings (Only visible when selectedNodeIds is empty) -->
+        <div id="canvas-global-properties" class="settings-group">
+          <div class="input-section-title">Canvas Settings</div>
+          
+          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <label style="margin-bottom: 2px;">Global Style Theme</label>
+            <select id="global-theme-select" class="text-input" style="padding: 8px 10px; font-size: 12px; height: auto; cursor: pointer;">
+              <option value="classic">Minimal Classic (Default)</option>
+              <option value="midnight">Sleek Midnight</option>
+              <option value="nordic">Nordic Forest</option>
+              <option value="cyberpunk">Cyberpunk Glow</option>
+              <option value="sunset">Sunset Coral</option>
+              <option value="glass">Frosted Glass</option>
+            </select>
+          </div>
+
+          <div class="settings-row">
+            <label>Grid Style</label>
+            <div class="toggle-selector" id="grid-style-selector">
+              <button class="selector-option active" data-value="dots">Dots</button>
+              <button class="selector-option" data-value="lines">Lines</button>
+              <button class="selector-option" data-value="off">Off</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label>Snap to Grid</label>
+            <div class="toggle-selector" id="snap-grid-selector">
+              <button class="selector-option" data-value="on">On</button>
+              <button class="selector-option active" data-value="off">Off</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label>Grid Size</label>
+            <select id="grid-size-select" class="text-input" style="padding: 6px 8px; font-size: 12px; width: auto; max-width: 100px; height: auto; cursor: pointer;">
+              <option value="10">10px</option>
+              <option value="15">15px</option>
+              <option value="20" selected>20px</option>
+              <option value="30">30px</option>
+              <option value="40">40px</option>
+            </select>
+          </div>
+
+          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <label style="margin-bottom: 2px;">Template Library</label>
+            <select id="template-library-select" class="text-input" style="padding: 8px 10px; font-size: 12px; height: auto; cursor: pointer;">
+              <option value="" disabled selected>Select a template...</option>
+              <option value="bug-triage">Bug Triage Process</option>
+              <option value="feedback-loop">User Feedback Loop</option>
+              <option value="user-login">User Login Flow</option>
+            </select>
+          </div>
+
+          <div class="settings-row">
+            <label>Column Titles</label>
+            <div class="toggle-selector" id="column-titles-selector">
+              <button class="selector-option active" data-value="show">Show</button>
+              <button class="selector-option" data-value="hide">Hide</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label>Swimlanes</label>
+            <div class="toggle-selector" id="swimlanes-selector">
+              <button class="selector-option active" data-value="off">Off</button>
+              <button class="selector-option" data-value="on">On</button>
+            </div>
+          </div>
+          
+          <div class="settings-row">
+            <label>Column Guides</label>
+            <div class="toggle-selector" id="column-guides-selector">
+              <button class="selector-option active" data-value="show">Show</button>
+              <button class="selector-option" data-value="hide">Hide</button>
+            </div>
+          </div>
+ 
+          <div class="settings-row">
+            <label>Direction</label>
+            <div class="toggle-selector" id="layout-direction-selector">
+              <button class="selector-option active" data-value="horizontal">Horizontal</button>
+              <button class="selector-option" data-value="vertical">Vertical</button>
+            </div>
+          </div>
+ 
+          <div class="settings-row">
+            <label>Stroke Width</label>
+            <div class="toggle-selector" id="stroke-width-selector">
+              <button class="selector-option active" data-value="1">1.0px</button>
+              <button class="selector-option" data-value="1.5">1.5px</button>
+              <button class="selector-option" data-value="2">2.0px</button>
+            </div>
+          </div>
+ 
+          <div class="settings-row">
+            <label>Arrow Line Style</label>
+            <div class="toggle-selector" id="line-style-selector">
+              <button class="selector-option active" data-value="solid">Solid</button>
+              <button class="selector-option" data-value="dashed">Dashed</button>
+            </div>
+          </div>
+ 
+          <div class="settings-row">
+            <label>Arrow Line Shape</label>
+            <div class="toggle-selector" id="line-shape-selector">
+              <button class="selector-option" data-value="orthogonal">Elbow</button>
+              <button class="selector-option" data-value="curved">Curved</button>
+              <button class="selector-option active" data-value="straight">Straight</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label>Animated Flow</label>
+            <div class="toggle-selector" id="global-flow-selector">
+              <button class="selector-option active" data-value="on">On</button>
+              <button class="selector-option" data-value="off">Off</button>
+            </div>
+          </div>
+ 
+          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <label style="margin-bottom: 2px;">Chart Title</label>
+            <input type="text" id="chart-title-input" class="text-input" placeholder="Type chart title (optional)..." autocomplete="off" style="padding: 8px 10px; font-size: 12px;">
+          </div>
+ 
+          <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
+            <label style="margin-bottom: 2px;">Typography</label>
+            <select id="font-family-select" class="text-input" style="padding: 8px 10px; font-size: 12px; height: auto; cursor: pointer;">
+              <!-- System Fonts -->
+              <optgroup label="System Fonts">
+                <option value="Inter, sans-serif" data-source="system">Inter (Default)</option>
+                <option value="system-ui, sans-serif" data-source="system">System UI</option>
+                <option value="Arial, sans-serif" data-source="system">Arial</option>
+                <option value="Georgia, serif" data-source="system">Georgia</option>
+                <option value="Courier New, monospace" data-source="system">Courier New</option>
+                <option value="Times New Roman, serif" data-source="system">Times New Roman</option>
+                <option value="Trebuchet MS, sans-serif" data-source="system">Trebuchet MS</option>
+                <option value="Verdana, sans-serif" data-source="system">Verdana</option>
+              </optgroup>
+              <!-- Google Fonts -->
+              <optgroup label="Google Fonts">
+                <option value="Roboto, sans-serif" data-source="google">Roboto</option>
+                <option value="Montserrat, sans-serif" data-source="google">Montserrat</option>
+                <option value="Open Sans, sans-serif" data-source="google">Open Sans</option>
+                <option value="Lato, sans-serif" data-source="google">Lato</option>
+                <option value="Poppins, sans-serif" data-source="google">Poppins</option>
+                <option value="Playfair Display, serif" data-source="google">Playfair Display</option>
+                <option value="Oswald, sans-serif" data-source="google">Oswald</option>
+                <option value="Merriweather, serif" data-source="google">Merriweather</option>
+                <option value="Lora, serif" data-source="google">Lora</option>
+                <option value="Outfit, sans-serif" data-source="google">Outfit</option>
+                <option value="Fira Sans, sans-serif" data-source="google">Fira Sans</option>
+              </optgroup>
+            </select>
+            <button class="btn btn-danger" id="reset-font-btn" style="padding: 6px 10px; font-size: 10px; display: none; width: 100%; margin: 4px 0 0 0;" title="Reset Font">
+              Reset Font
+            </button>
+          </div>
+          <div class="settings-row">
+            <label>Export BG</label>
+            <div class="toggle-selector" id="export-bg-selector">
+              <button class="selector-option active" data-value="solid">Solid</button>
+              <button class="selector-option" data-value="transparent">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+ 
+      <!-- SIDEBAR FOOTER -->
+      <div class="sidebar-footer">
+        <button class="btn btn-primary" id="export-svg-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+          </svg>
+          Export SVG File
+        </button>
+        <button class="btn" id="copy-code-btn">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+          </svg>
+          Copy SVG Code
+        </button>
+        <button class="btn" id="export-png-btn" style="margin-top: 4px;">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width: 14px; height: 14px; margin-right: 4px;">
+            <path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2v9.67z"/>
+          </svg>
+          Export PNG Image
+        </button>
+        <div style="display: flex; gap: 8px; margin-top: 4px; width: 100%;">
+          <button class="btn" id="save-json-btn" style="flex: 1; padding: 10px; font-size: 11px;">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 13px; height: 13px; margin-right: 4px;"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            Save File
+          </button>
+          <button class="btn" id="load-json-btn" style="flex: 1; padding: 10px; font-size: 11px;">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 13px; height: 13px; margin-right: 4px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4c-3.64 0-6.67 2.59-7.35 6.04C2.34 10.36 0 12.91 0 16c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v-4h-4v4H7l5 5 5-5h-3z"/></svg>
+            Load File
+          </button>
+        </div>
+        <input type="file" id="load-json-input" accept=".json" style="display: none;">
+      </div>
+    </aside>
+  </div>
+
+  <!-- Shortcuts Helper Modal -->
+  <div id="shortcuts-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Keyboard Shortcuts & Gestures</h2>
+        <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="shortcuts-table">
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Shortcut / Gesture</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Pan Canvas</strong></td>
+              <td>Hold <kbd>Space</kbd> + Left-Click & Drag</td>
+            </tr>
+            <tr>
+              <td><strong>Zoom In / Out</strong></td>
+              <td>Mouse Scroll Wheel (Zoom to mouse)</td>
+            </tr>
+            <tr>
+              <td><strong>Select Tool</strong></td>
+              <td>Press <kbd>V</kbd></td>
+            </tr>
+            <tr>
+              <td><strong>Connect Tool</strong></td>
+              <td>Press <kbd>C</kbd></td>
+            </tr>
+            <tr>
+              <td><strong>Delete Box(es)</strong></td>
+              <td>Press <kbd>Delete</kbd> or <kbd>Backspace</kbd></td>
+            </tr>
+            <tr>
+              <td><strong>Multi-Select</strong></td>
+              <td>Hold <kbd>Shift</kbd> + Click boxes <em>or</em> Drag marquee select</td>
+            </tr>
+            <tr>
+              <td><strong>Edit Box Label</strong></td>
+              <td>Double-click Box on canvas</td>
+            </tr>
+            <tr>
+              <td><strong>Undo Action</strong></td>
+              <td>Press <kbd>Ctrl</kbd> + <kbd>Z</kbd></td>
+            </tr>
+            <tr>
+              <td><strong>Redo Action</strong></td>
+              <td>Press <kbd>Ctrl</kbd> + <kbd>Y</kbd> or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Z</kbd></td>
+            </tr>
+            <tr>
+              <td><strong>Spawn Child Box</strong></td>
+              <td>Press <kbd>Tab</kbd> (spawns connected box in next column)</td>
+            </tr>
+            <tr>
+              <td><strong>Spawn Sibling Box</strong></td>
+              <td>Press <kbd>Enter</kbd> (spawns box in same column)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+  <script>
+    // Fallback: If script.js has not executed due to CORS blocking on local file:// protocol, load it as a classic script
+    window.addEventListener('load', () => {
+      if (typeof init === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'script.js';
+        document.body.appendChild(script);
+      }
+    });
+  </script>
+</body>
+</html>

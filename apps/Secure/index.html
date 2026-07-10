@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Tool Suite - CAPTCHA & Cipher</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="toolbar-section">
+        <div class="logo-icon" title="Security Suite">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Quick Actions -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-reset" data-tooltip="Reset to Defaults">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6"/>
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Export Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-export" data-tooltip="Export PNG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas Viewport (Flowchart Style) -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+      
+      <div class="canvas-viewport">
+        <!-- Interactive Preview Container -->
+        <div id="preview-container">
+          <!-- Live Captcha Canvas or Encryption Output will be rendered here -->
+          <div class="workspace-card" id="captcha-workspace">
+            <canvas id="captcha-canvas" width="280" height="90"></canvas>
+            
+            <!-- User verification test interface -->
+            <div class="verify-box">
+              <label for="verify-input">Verify CAPTCHA</label>
+              <div class="verify-row">
+                <input type="text" id="verify-input" placeholder="Type letters here" class="text-input">
+                <button class="action-btn" id="btn-verify">Check</button>
+              </div>
+              <div id="verify-result" class="verify-result"></div>
+            </div>
+          </div>
+
+          <div class="workspace-card" id="cipher-workspace" style="display: none;">
+            <div class="cipher-box">
+              <label>XOR Cipher Result</label>
+              <textarea id="cipher-result" class="text-input" readonly placeholder="Output Base64 / Plaintext will appear here..."></textarea>
+              <button class="action-btn" id="btn-copy-result">Copy to Clipboard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Floating HUD status bar -->
+      <div class="hud-status-bar">
+        <span class="hud-item" id="hud-mode-val">Tool: CAPTCHA</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-status-val">Verified: No</span>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (CAPTCHA, Cipher) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-captcha" data-tab="tab-captcha">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+          </svg>
+          CAPTCHA
+        </button>
+        <button class="tab-btn" id="tab-btn-cipher" data-tab="tab-cipher">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          XOR Cipher
+        </button>
+      </div>
+
+      <!-- Tab Content: CAPTCHA -->
+      <div class="sidebar-tab-content active" id="tab-captcha">
+        <div class="input-group">
+          <div class="input-section-title">Generation Seed</div>
+          
+          <div class="input-field-wrapper">
+            <label for="captcha-seed">Custom Seed String</label>
+            <input type="text" id="captcha-seed" class="text-input" value="SecureKey1" placeholder="e.g. random text">
+          </div>
+
+          <button class="action-btn" id="btn-gen-captcha">Generate CAPTCHA</button>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Visual Styling</div>
+
+          <div class="input-field-wrapper">
+            <label for="captcha-len">Character Length</label>
+            <input type="number" id="captcha-len" class="text-input" min="4" max="10" value="6">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="captcha-noise-pts">Noise Points Count</label>
+            <input type="number" id="captcha-noise-pts" class="text-input" min="0" max="2000" step="50" value="800">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="captcha-noise-lines">Noise Lines Count</label>
+            <input type="number" id="captcha-noise-lines" class="text-input" min="0" max="20" value="6">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="captcha-blur">Blur Effect (px)</label>
+            <input type="number" id="captcha-blur" class="text-input" min="0" max="5" value="1">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: XOR Cipher -->
+      <div class="sidebar-tab-content" id="tab-cipher">
+        <div class="input-group">
+          <div class="input-section-title">Keys & Seeds</div>
+
+          <div class="input-field-wrapper">
+            <label for="cipher-seed">XOR Secret Key (Seed)</label>
+            <input type="text" id="cipher-seed" class="text-input" value="EnigmaKey" placeholder="e.g. MyPassword123">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="cipher-mode">Cipher Operation</label>
+            <select id="cipher-mode" class="text-input">
+              <option value="encrypt">Encrypt Plaintext</option>
+              <option value="decrypt">Decrypt Base64 Cipher</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Data Inputs</div>
+
+          <div class="input-field-wrapper">
+            <label for="cipher-message" id="label-cipher-message">Plaintext Message</label>
+            <textarea id="cipher-message" class="text-input" rows="6" placeholder="Type your text to encrypt here..."></textarea>
+          </div>
+
+          <button class="action-btn" id="btn-process-cipher">Execute XOR Cipher</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

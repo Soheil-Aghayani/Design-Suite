@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/tool.css">
+    <style>
+        .span-all { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="control-group span-all">
+        <label>Time (H:M:S)</label>
+        <div class="row">
+            <input type="number" id="hr" value="10" style="width:33%" placeholder="H">
+            <input type="number" id="min" value="10" style="width:33%" placeholder="M">
+            <input type="number" id="sec" value="30" style="width:33%" placeholder="S">
+        </div>
+    </div>
+    <div class="control-group">
+        <label for="style">Face Style</label>
+        <select id="style">
+            <option value="arabic">Arabic</option>
+            <option value="roman">Roman</option>
+            <option value="minimal">Minimal</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="brand">Brand Text</label>
+        <input type="text" id="brand" placeholder="Quartz">
+    </div>
+    <div class="control-group">
+        <label>Hour Hand</label>
+        <div class="row">
+            <input type="color" id="h-col" value="#1c1c1e">
+            <input type="text" id="h-hex" value="#1C1C1E" style="width: 80px; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Minute Hand</label>
+        <div class="row">
+            <input type="color" id="m-col" value="#1c1c1e">
+            <input type="text" id="m-hex" value="#1C1C1E" style="width: 80px; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Second Hand</label>
+        <div class="row">
+            <input type="color" id="s-col" value="#ff3b30">
+            <input type="text" id="s-hex" value="#FF3B30" style="width: 80px; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label for="thick">Thickness</label>
+        <input type="range" id="thick" min="1" max="20" value="8">
+    </div>
+    <div class="control-group span-all">
+        <div class="row" style="flex-wrap: wrap; gap: 1.5rem;">
+            <div class="row"><input type="checkbox" id="live"><label for="live">Live</label></div>
+            <div class="row"><input type="checkbox" id="show-hands" checked><label for="show-hands">Hands</label></div>
+            <div class="row"><input type="checkbox" id="fixed-hr"><label for="fixed-hr">Fixed Hr</label></div>
+            <div class="row"><input type="checkbox" id="teeth" checked><label for="teeth">Teeth</label></div>
+            <div class="row"><input type="checkbox" id="m-lbl"><label for="m-lbl">Minute Labels</label></div>
+        </div>
+    </div>
+    <div class="control-group span-all">
+        <button onclick="download()">Download PNG</button>
+    </div>
+</div>
+
+<canvas id="canvas" width="1000" height="1000" style="width: 500px; height: 500px;"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+    const ui = ['hr','min','sec','style','brand','h-col','h-hex','m-col','m-hex','s-col','s-hex','thick','live','show-hands','fixed-hr','teeth','m-lbl'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+    
+    let animationFrameId, prefs = { persian: true, bold: false, italic: false, size: 24, font: 'Segoe UI' };
+
+    function toPersian(n) { if (!prefs.persian) return n.toString(); const id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']; return n.toString().replace(/[0-9]/g, w => id[+w]); }
+
+    // Hex Sync
+    ['h','m','s'].forEach(p => {
+        ui[p+'-col'].oninput = () => { ui[p+'-hex'].value = ui[p+'-col'].value.toUpperCase(); handleInput(); };
+        ui[p+'-hex'].oninput = () => { if(/^#[0-9A-F]{6}$/i.test(ui[p+'-hex'].value)) { ui[p+'-col'].value = ui[p+'-hex'].value; handleInput(); } };
+    });
+
+    function draw() {
+        ctx.clearRect(0,0,1000,1000);
+        const cx = 500, cy = 500, r = 400;
+        const h = parseFloat(ui.hr.value)||0, m = parseFloat(ui.min.value)||0, s = parseFloat(ui.sec.value)||0;
+        
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+        
+        if (ui.brand.value) { ctx.font = `bold ${prefs.size*1.2}px "${prefs.font}"`; ctx.fillStyle = '#8e8e93'; ctx.textAlign='center'; ctx.fillText(ui.brand.value.toUpperCase(), cx, cy-r*0.4); }
+
+        if (ui.teeth.checked) {
+            for (let i = 0; i < 60; i++) {
+                const ang = (i * 6 - 90) * Math.PI / 180, isHour = i % 5 === 0;
+                ctx.lineWidth = isHour ? 6 : 2; const markLen = isHour ? 30 : 15;
+                ctx.beginPath(); ctx.moveTo(cx + r * Math.cos(ang), cy + r * Math.sin(ang)); ctx.lineTo(cx + (r - markLen) * Math.cos(ang), cy + (r - markLen) * Math.sin(ang)); ctx.stroke();
+                if (ui['m-lbl'].checked && !isHour) { ctx.font = `italic ${prefs.size*0.6}px "${prefs.font}"`; ctx.fillStyle = '#8e8e93'; const tr = r - 40; ctx.fillText(toPersian(i), cx+tr*Math.cos(ang), cy+tr*Math.sin(ang)); }
+            }
+        }
+
+        if (ui.style.value !== 'minimal') {
+            for(let i=1; i<=12; i++){ 
+                const ang = (i*30-90)*Math.PI/180; ctx.font=`bold ${prefs.size*1.5}px "${prefs.font}"`; ctx.fillStyle = '#000'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                let text = (ui.style.value === 'roman') ? ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][i-1] : toPersian(i);
+                ctx.fillText(text, cx+(r-75)*Math.cos(ang), cy+(r-75)*Math.sin(ang)); 
+            }
+        }
+
+        if(ui['show-hands'].checked){ 
+            let ha = (h%12)*30; if(!ui['fixed-hr'].checked) ha += m*0.5;
+            const thick = parseInt(ui.thick.value)||8;
+            drawHand(ha-90, r*0.5, thick * 1.5, ui['h-col'].value); drawHand(m*6-90, r*0.8, thick, ui['m-col'].value); 
+            drawHand(s*6-90, r*0.9, thick * 0.5, ui['s-col'].value); 
+        }
+        ctx.fillStyle = ui['h-col'].value; ctx.beginPath(); ctx.arc(cx,cy,15,0,Math.PI*2); ctx.fill();
+    }
+    function drawHand(deg, len, w, col) { const rad = (deg*Math.PI)/180; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(500,500); ctx.lineTo(500+len*Math.cos(rad), 500+len*Math.sin(rad)); ctx.stroke(); }
+
+    function startAnim() { if(!animationFrameId) { function animate() { if(ui.live.checked){ const n=new Date(); ui.hr.value=n.getHours()%12; ui.min.value=n.getMinutes(); ui.sec.value=n.getSeconds(); draw(); animationFrameId=requestAnimationFrame(animate); } else animationFrameId=null; } animationFrameId=requestAnimationFrame(animate); } }
+    function stopAnim() { if(animationFrameId){ cancelAnimationFrame(animationFrameId); animationFrameId=null; } }
+
+    function handleInput() { if(ui.live.checked) startAnim(); else { stopAnim(); draw(); } save(); }
+
+    function save() { const data = Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {}); localStorage.setItem('suite_tool_clock', JSON.stringify(data)); }
+    function load() { const raw = localStorage.getItem('suite_tool_clock'); if(raw){ const d=JSON.parse(raw); Object.keys(d).forEach(k=>{ if(ui[k]){ if(ui[k].type==='checkbox') ui[k].checked=d[k]; else ui[k].value=d[k]; } }); } draw(); }
+
+    window.addEventListener('message', e => { if(e.data.type === 'SYNC_PREFS') { prefs = e.data.prefs; draw(); } });
+    Object.values(ui).forEach(el => { if(el.oninput) return; el.oninput = handleInput; });
+    window.onload = () => { window.parent.postMessage({type:'GET_PREFS'}, '*'); load(); };
+</script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steam TF2 Key Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Centered Minimalist Main Workspace -->
+    <main class="calculator-card">
+      <header class="calc-header">
+        <div class="logo-area">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <line x1="12" y1="4" x2="12" y2="20"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+          </svg>
+          <h1>Steam Key Arbitrage Planner</h1>
+        </div>
+        <p class="subtitle">Calculate exactly how many TF2 keys to buy and sell to fund your Steam games in Tomans.</p>
+      </header>
+
+      <!-- Main Layout Grid: Inputs on Left, Results on Right -->
+      <div class="calculator-grid">
+        
+        <!-- COLUMN 1: INPUTS -->
+        <section class="calc-section inputs-section">
+          <h2 class="section-title">1. Enter Rates</h2>
+          
+          <div class="input-group">
+            <div class="input-row">
+              <div class="input-field-wrapper flex-2">
+                <label for="input-game-price">Game Price on Steam</label>
+                <input type="number" id="input-game-price" class="text-input" value="1200.00" step="0.01" min="0">
+              </div>
+              <div class="input-field-wrapper flex-1">
+                <label for="select-steam-currency">Currency</label>
+                <select id="select-steam-currency" class="text-input">
+                  <option value="UAH|₴|2" selected>UAH (₴)</option>
+                  <option value="USD|$|2">USD ($)</option>
+                  <option value="EUR|€|2">EUR (€)</option>
+                  <option value="GBP|£|2">GBP (£)</option>
+                  <option value="TRY|₺|2">TRY (₺)</option>
+                  <option value="RUB|₽|2">RUB (₽)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="input-wallet-balance">Existing Steam Wallet Balance</label>
+              <input type="number" id="input-wallet-balance" class="text-input" value="0.00" step="0.01" min="0">
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="input-key-buy-price">TF2 Key Buy Price outside Steam (in Tomans)</label>
+              <div class="input-with-addon">
+                <input type="text" id="input-key-buy-price" class="text-input" value="110,000">
+                <span class="input-addon">Toman</span>
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="input-key-sell-price">Steam Market Key Listing Price (what Buyer pays)</label>
+              <input type="number" id="input-key-sell-price" class="text-input" value="105.00" step="0.5" min="0.05">
+            </div>
+
+            <!-- Live Rounding Feedback -->
+            <div class="market-fee-box" id="rate-calculation-feedback">
+              Listing at 105.00 ₴ ➔ You receive 91.00 ₴ (14.00 ₴ Steam fee).
+            </div>
+          </div>
+        </section>
+
+        <!-- COLUMN 2: RESULTS -->
+        <section class="calc-section results-section">
+          <h2 class="section-title">2. Planning Results</h2>
+          
+          <div class="results-container">
+            <div class="result-highlight-card">
+              <div class="result-label">TF2 Keys to Purchase</div>
+              <div class="result-value" id="res-keys-count">0 Keys</div>
+              <div class="result-desc">Buy outside Steam and sell on Community Market</div>
+            </div>
+
+            <div class="results-detailed-grid">
+              <div class="detail-card">
+                <span class="detail-label">Total Cash Cost</span>
+                <strong class="detail-value text-primary" id="res-cash-cost">0 Toman</strong>
+              </div>
+              
+              <div class="detail-card success">
+                <span class="detail-label">Net Savings</span>
+                <strong class="detail-value text-success" id="res-savings-val">0 Toman</strong>
+                <span class="detail-badge" id="res-savings-pct">0% saved</span>
+              </div>
+            </div>
+
+            <div class="leftover-wallet-alert" id="res-leftover-box">
+              Leftover Wallet balance: <strong id="res-leftover-wallet">0.00 ₴</strong> after purchasing game.
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- Linear Money Flow Explanation -->
+      <section class="calc-section flow-section">
+        <h2 class="section-title">3. Transaction Steps</h2>
+        <div class="flow-steps-timeline">
+          <div class="flow-step-item">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Buy Keys</h3>
+              <p id="flow-step-1">Buy 0 keys outside Steam for 0 Toman total.</p>
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Sell on Market</h3>
+              <p id="flow-step-2">List keys for 0.00 ₴ each. After Steam fee, you receive 0.00 ₴ per key, totaling 0.00 ₴ wallet funds.</p>
+            </div>
+          </div>
+          <div class="flow-step-item">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Get Game</h3>
+              <p id="flow-step-3">Buy the game for 0.00 ₴. You will have 0.00 ₴ left in your Steam Wallet.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SteamDB & DLC Helper Section -->
+      <section class="calc-section steamdb-section">
+        <div class="steamdb-header">
+          <h2 class="section-title">SteamDB Lookup & DLC Finder</h2>
+          <p class="section-subtext">SteamDB blocks direct API fetching. Use this helper to look up App IDs via CheapShark and get direct links to prices, DLCs, and offers. <strong>Note: Dynamic Steam Bundles are not returned by Steam's API; please enter their prices manually.</strong></p>
+        </div>
+
+        <div class="search-box-row">
+          <input type="text" id="input-db-search" class="text-input" placeholder="Search game title (e.g. Slay the Spire)">
+          <button class="action-btn" id="btn-db-search">Search App ID</button>
+        </div>
+
+        <div class="db-search-results" id="db-search-results-list" style="display: none;">
+          <!-- Loaded dynamically -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

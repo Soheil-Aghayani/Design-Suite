@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Shape Slicer Pro</title>
+    <link rel="stylesheet" href="../css/tool.css">
+    <style>
+        body { padding: 0; background: #f2f2f7; display: flex; flex-direction: row; height: 100vh; align-items: stretch; }
+        
+        /* --- Sidebar Workspace --- */
+        #slicer-sidebar {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: saturate(180%) blur(20px);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            gap: 24px;
+        }
+
+        #slicer-main {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f2f2f7;
+        }
+
+        .canvas-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+        }
+
+        /* --- UI Components --- */
+        .config-section { display: flex; flex-direction: column; gap: 16px; }
+        .config-header { font-size: 0.7rem; font-weight: 800; color: #8e8e93; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 8px; }
+
+        .control-card {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .row-space { display: flex; align-items: center; justify-content: space-between; }
+        .val-badge { font-family: monospace; font-weight: 700; color: var(--primary); font-size: 0.9rem; }
+
+        /* Custom range styling for tighter sidebar */
+        input[type="range"] { width: 100%; margin: 8px 0; }
+        
+        .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
+    </style>
+</head>
+<body>
+
+<aside id="slicer-sidebar">
+    <div class="config-section">
+        <div class="config-header">Geometry</div>
+        <div class="control-card">
+            <div class="control-group">
+                <div class="row-space"><label>Slice Count</label><span id="count-val" class="val-badge">10</span></div>
+                <input type="range" id="count" value="10" min="2" max="100">
+            </div>
+            <div class="control-group">
+                <label>Base Shape</label>
+                <select id="shape">
+                    <option value="circle">Circle</option>
+                    <option value="rectangle">Rectangle</option>
+                    <option value="square">Square</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <div class="config-header">Transformations</div>
+        <div class="control-card">
+            <div class="control-group">
+                <div class="row-space"><label>Rotation</label><span id="rot-val" class="val-badge">0°</span></div>
+                <input type="range" id="rot" min="0" max="360" value="0">
+            </div>
+            <div class="control-group">
+                <div class="row-space"><label>Inner Radius</label><span id="inner-val" class="val-badge">0%</span></div>
+                <input type="range" id="inner" min="0" max="90" value="0">
+            </div>
+            <div class="control-group">
+                <div class="row-space"><label>Explosion</label><span id="offset-val" class="val-badge">0px</span></div>
+                <input type="range" id="offset" min="0" max="150" value="0">
+            </div>
+        </div>
+    </div>
+
+    <div class="config-section">
+        <div class="config-header">Display</div>
+        <div class="control-card">
+            <div class="row"><input type="checkbox" id="colorize"><label>Vibrant Coloring</label></div>
+            <div class="row"><input type="checkbox" id="labels" checked><label>Show Measurements</label></div>
+        </div>
+    </div>
+
+    <div class="action-grid">
+        <button class="secondary" onclick="randomizeColors()">Randomize</button>
+        <button onclick="download()">Export PNG</button>
+    </div>
+</aside>
+
+<main id="slicer-main">
+    <div class="canvas-card">
+        <canvas id="canvas" width="1000" height="1000" style="width: 600px; height: 600px;"></canvas>
+    </div>
+</main>
+
+<script>
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+    const ui = ['count','shape','rot','inner','offset','colorize','labels'].reduce((a,c)=>({...a, [c]:el(c)}), {});
+    
+    let colors = [], prefs = { persian: true, bold: false, italic: false, size: 24, font: 'Segoe UI' };
+
+    function updateBadges() {
+        el('count-val').innerText = ui.count.value;
+        el('rot-val').innerText = ui.rot.value + '°';
+        el('inner-val').innerText = ui.inner.value + '%';
+        el('offset-val').innerText = ui.offset.value + 'px';
+    }
+
+    function toPersian(n) { if (!prefs.persian) return n.toString(); const id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']; return n.toString().replace(/[0-9]/g, w => id[+w]); }
+
+    function randomizeColors() {
+        const rc = () => `#${Math.floor(Math.random()*16777215).toString(16).padStart(6,'0')}`;
+        colors = Array.from({length: 100}, rc);
+        draw(); save();
+    }
+
+    function draw() {
+        updateBadges();
+        ctx.clearRect(0,0,1000,1000);
+        const c = parseInt(ui.count.value)||2, rot = (ui.rot.value*Math.PI)/180, inner = ui.inner.value/100, off = parseInt(ui.offset.value);
+        const cx = 500, cy = 500, outerR = 400, step = (2*Math.PI)/c;
+
+        // 1. Pre-define the Shape Path (Centered at 0,0)
+        const shapePath = new Path2D();
+        const shape = ui.shape.value;
+        if (shape === 'circle') {
+            shapePath.arc(0, 0, outerR, 0, Math.PI*2);
+            if (inner > 0) { 
+                const innerR = outerR * inner;
+                shapePath.moveTo(innerR, 0); 
+                shapePath.arc(0, 0, innerR, 0, Math.PI*2, true); 
+            }
+        } else {
+            const w = (shape==='square'?700:850), h = (shape==='square'?700:500);
+            if (shape === 'rectangle' || shape === 'square') {
+                shapePath.rect(-w/2, -h/2, w, h);
+                if (inner > 0) {
+                    const iw = w*inner, ih = h*inner;
+                    shapePath.moveTo(-iw/2, -ih/2); shapePath.lineTo(-iw/2, ih/2); shapePath.lineTo(iw/2, ih/2); shapePath.lineTo(iw/2, -ih/2); shapePath.closePath();
+                }
+            } else if (shape === 'triangle') {
+                // Equilateral centered at its centroid
+                shapePath.moveTo(0, -420); shapePath.lineTo(364, 210); shapePath.lineTo(-364, 210); shapePath.closePath();
+                if (inner > 0) {
+                    const it = inner;
+                    shapePath.moveTo(0, -420*it); shapePath.lineTo(-364*it, 210*it); shapePath.lineTo(364*it, 210*it); shapePath.closePath();
+                }
+            }
+        }
+
+        for (let i=0; i<c; i++) {
+            const sA = (i*step)-Math.PI/2+rot, eA = ((i+1)*step)-Math.PI/2+rot, mA = sA+(step/2);
+            const ox = Math.cos(mA)*off, oy = Math.sin(mA)*off, scx = cx+ox, scy = cy+oy;
+            
+            // Define the Wedge for this specific slice
+            const wedgePath = new Path2D();
+            wedgePath.moveTo(0, 0);
+            wedgePath.arc(0, 0, 1500, sA, eA);
+            wedgePath.closePath();
+
+            ctx.save();
+            ctx.translate(scx, scy);
+            
+            // Shared Stroke Styles
+            ctx.lineWidth = 8; ctx.strokeStyle = '#1c1c1e'; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+            // Pass 1: Fill (Clipped by both Wedge and Shape)
+            ctx.save();
+            ctx.clip(wedgePath);
+            if (shape !== 'circle') ctx.rotate(rot);
+            ctx.clip(shapePath);
+            ctx.fillStyle = ui.colorize.checked ? (colors[i]||'#fff') : 'transparent';
+            if (ui.colorize.checked) ctx.fill(shapePath);
+            ctx.restore();
+
+            // Pass 2: Outer Boundary Stroke (Clipped by Wedge)
+            ctx.save();
+            ctx.clip(wedgePath);
+            if (shape !== 'circle') ctx.rotate(rot);
+            ctx.lineWidth = 16; // Double weight because clipping will cut it in half
+            ctx.stroke(shapePath);
+            ctx.restore();
+
+            // Pass 3: Radial Cut Lines (Clipped by Shape)
+            ctx.save();
+            if (shape !== 'circle') ctx.rotate(rot);
+            ctx.clip(shapePath);
+            if (shape !== 'circle') ctx.rotate(-rot); // Return to world angles for spokes
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(1500*Math.cos(sA), 1500*Math.sin(sA));
+            ctx.moveTo(0, 0); ctx.lineTo(1500*Math.cos(eA), 1500*Math.sin(eA));
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.restore();
+
+            // Labels (Drawn last and unclipped for clarity)
+            if (ui.labels.checked) {
+                ctx.fillStyle = '#1c1c1e'; 
+                ctx.font = `bold ${prefs.size}px "${prefs.font}"`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                const lr = 500;
+                ctx.fillText(`${toPersian((i*(360/c)).toFixed(1).replace('.0',''))}°`, scx+lr*Math.cos(mA), scy+lr*Math.sin(mA));
+            }
+        }
+    }
+
+    function save() {
+        const data = Object.keys(ui).reduce((a,c)=>({...a, [c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {colors});
+        localStorage.setItem('suite_tool_slicer_v2', JSON.stringify(data));
+    }
+
+    function load() {
+        const raw = localStorage.getItem('suite_tool_slicer_v2');
+        if (raw) {
+            const d = JSON.parse(raw);
+            Object.keys(d).forEach(k => { if(ui[k]) { if(ui[k].type==='checkbox') ui[k].checked = d[k]; else ui[k].value = d[k]; } });
+            colors = d.colors || [];
+        } else { randomizeColors(); }
+        draw();
+    }
+
+    function download() { const l = document.createElement('a'); l.download = `slicer-${Date.now()}.png`; l.href = canvas.toDataURL(); l.click(); }
+
+    window.addEventListener('message', e => { if(e.data.type === 'SYNC_PREFS') { prefs = e.data.prefs; draw(); } });
+    Object.values(ui).forEach(el => el.oninput = () => { draw(); save(); });
+    window.onload = () => { window.parent.postMessage({type:'GET_PREFS'}, '*'); load(); };
+</script>
+</body>
+</html>

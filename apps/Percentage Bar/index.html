@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circular Gauge Designer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Circular Gauge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Zoom Controls -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="zoom-in-btn" data-tooltip="Zoom In">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <span class="zoom-display" id="zoom-display-text">100%</span>
+        <button class="tool-btn" id="zoom-out-btn" data-tooltip="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button class="tool-btn" id="zoom-reset-btn" data-tooltip="Reset Zoom & Pan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h6v6"/>
+            <path d="M9 21H3v-6"/>
+            <path d="M21 3l-7 7"/>
+            <path d="M3 21l7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Actions -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-reset" data-tooltip="Reset to Defaults">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6"/>
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Export Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-export" data-tooltip="Export PNG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas Viewport (Flowchart Style) -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+      
+      <div class="canvas-viewport">
+        <!-- Interactive Preview Container -->
+        <div id="preview-container" class="show-checkerboard">
+          <canvas id="gauge-canvas" width="340" height="340"></canvas>
+        </div>
+      </div>
+
+      <!-- Floating HUD status bar -->
+      <div class="hud-status-bar">
+        <span class="hud-item" id="hud-value-val">Value: 95%</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-label-val">Label: Performance</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-zoom-val">Zoom: 100%</span>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (Value, Style, Typography, Export) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-value" data-tab="tab-value">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Value
+        </button>
+        <button class="tab-btn" id="tab-btn-colors" data-tab="tab-colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          Colors
+        </button>
+        <button class="tab-btn" id="tab-btn-typo" data-tab="tab-typo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <polyline points="4 7 4 4 20 4 20 7"/>
+            <line x1="9" y1="20" x2="15" y2="20"/>
+            <line x1="12" y1="4" x2="12" y2="20"/>
+          </svg>
+          Type
+        </button>
+        <button class="tab-btn" id="tab-btn-export" data-tab="tab-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export
+        </button>
+      </div>
+
+      <!-- Tab Content: Value -->
+      <div class="sidebar-tab-content active" id="tab-value">
+        <div class="input-group">
+          <div class="input-section-title">Value & Text</div>
+          
+          <div class="input-field-wrapper">
+            <label for="gauge-percent">Percent Value (0 to 100)</label>
+            <input type="text" id="gauge-percent" class="text-input" value="95" placeholder="e.g. 95 (Persian digits OK)">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="gauge-label">Label Inscription</label>
+            <input type="text" id="gauge-label" class="text-input" value="Performance" placeholder="e.g. Performance">
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="gauge-animate" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Animate value changes</span>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="show-checkerboard" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Preview checkerboard layer</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Gauge Geometry</div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="gauge-gap">Gauge Arc Gap (Degrees)</label>
+              <span id="gauge-gap-lbl">46°</span>
+            </div>
+            <input type="range" id="gauge-gap" min="0" max="180" value="46">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="gauge-thickness">Thickness Ratio</label>
+              <span id="gauge-thickness-lbl">12%</span>
+            </div>
+            <input type="range" id="gauge-thickness" min="2" max="30" value="12">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Colors -->
+      <div class="sidebar-tab-content" id="tab-colors">
+        <div class="input-group">
+          <div class="input-section-title">Visual Colors</div>
+
+          <div class="color-picker-grid">
+            <div class="input-field-wrapper">
+              <label>Arc Color (Progress)</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-arc-picker" value="#16a34a">
+                <input type="text" id="color-arc-text" class="text-input color-hex-val" value="#16a34a" placeholder="#16a34a">
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label>Track Color (Background)</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-track-picker" value="#e6e9ef">
+                <input type="text" id="color-track-text" class="text-input color-hex-val" value="#e6e9ef" placeholder="#e6e9ef">
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label>Percent Text Tone</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-percent-picker" value="#0f172a">
+                <input type="text" id="color-percent-text" class="text-input color-hex-val" value="#0f172a" placeholder="#0f172a">
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label>Label Text Tone</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-label-picker" value="#64748b">
+                <input type="text" id="color-label-text" class="text-input color-hex-val" value="#64748b" placeholder="#64748b">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Typography -->
+      <div class="sidebar-tab-content" id="tab-typo">
+        <div class="input-group">
+          <div class="input-section-title">Value Text Settings</div>
+
+          <div class="input-field-wrapper">
+            <label for="percent-font">Font Family</label>
+            <select id="percent-font" class="text-input">
+              <option value="Inter">Inter (Sans-Serif)</option>
+              <option value="Outfit">Outfit (Display)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Monospace)</option>
+              <option value="Vazirmatn">Vazirmatn (Persian)</option>
+              <option value="Arial">Arial</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="percent-size">Font Size (0 = Auto)</label>
+              <span id="percent-size-lbl">Auto</span>
+            </div>
+            <input type="range" id="percent-size" min="0" max="150" value="0">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Label Text Settings</div>
+
+          <div class="input-field-wrapper">
+            <label for="label-font">Font Family</label>
+            <select id="label-font" class="text-input">
+              <option value="Inter">Inter (Sans-Serif)</option>
+              <option value="Outfit">Outfit (Display)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Monospace)</option>
+              <option value="Vazirmatn">Vazirmatn (Persian)</option>
+              <option value="Arial">Arial</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="label-size">Font Size (0 = Auto)</label>
+              <span id="label-size-lbl">Auto</span>
+            </div>
+            <input type="range" id="label-size" min="0" max="100" value="0">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="label-spacing">Relative Spacing</label>
+              <span id="label-spacing-lbl">+2%</span>
+            </div>
+            <input type="range" id="label-spacing" min="-20" max="50" value="2">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Export -->
+      <div class="sidebar-tab-content" id="tab-export">
+        <div class="input-group">
+          <div class="input-section-title">Image Export Settings</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="export-scale">PNG Quality Scale</label>
+              <span id="export-scale-lbl">3.0x</span>
+            </div>
+            <input type="range" id="export-scale" min="10" max="100" step="5" value="30">
+          </div>
+
+          <button class="action-btn" id="btn-export-png">Export Transparent PNG</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

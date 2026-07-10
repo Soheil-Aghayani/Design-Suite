@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plotter v2 - Premium Number Line Designer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop/Flowchart style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="toolbar-section">
+        <!-- Logo -->
+        <div class="logo-icon" title="Plotter v2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M3 12H21" stroke-linecap="round"/>
+            <path d="M6 8V16" stroke-linecap="round"/>
+            <path d="M12 6V18" stroke-linecap="round"/>
+            <path d="M18 8V16" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Zoom Controls (Flowchart style) -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="zoom-in-btn" data-tooltip="Zoom In">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <span class="zoom-display" id="zoom-display-text">100%</span>
+        <button class="tool-btn" id="zoom-out-btn" data-tooltip="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button class="tool-btn" id="zoom-reset-btn" data-tooltip="Reset Zoom & Pan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h6v6"/>
+            <path d="M9 21H3v-6"/>
+            <path d="M21 3l-7 7"/>
+            <path d="M3 21l7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+      
+      <!-- History Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-undo" data-tooltip="Undo Change (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v6h6"/>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="btn-redo" data-tooltip="Redo Change (Ctrl+Y)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6"/>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Actions Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-reset" data-tooltip="Reset to Defaults">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6"/>
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="btn-randomize" data-tooltip="Randomize Colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Export Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-export" data-tooltip="Quick Export PNG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="btn-quick-copy" data-tooltip="Quick Copy SVG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-section" style="margin-top: auto;">
+        <!-- Theme Toggle -->
+        <button class="tool-btn" id="theme-toggle-btn" data-tooltip="Toggle Theme">
+          <svg id="sun-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0s-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41l-1.06-1.06zm1.06-12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41zm-12.37 12.37c-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06c.39-.38.39-1.02 0-1.41z"/>
+          </svg>
+          <svg id="moon-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+            <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas Viewport (Flowchart Style) -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+      
+      <div class="canvas-viewport">
+        <!-- Number Line Container (Floats transparently on dots) -->
+        <div id="preview-container">
+          <!-- SVG will be dynamically injected here -->
+        </div>
+      </div>
+
+      <!-- Floating canvas Info HUD status bar -->
+      <div class="hud-status-bar">
+        <span class="hud-item" id="hud-dims-val">0 × 0 px</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-ticks-val">9 Ticks</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-zoom-val">Zoom: 100%</span>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (Scale, Geometry, Typography, Memory) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-scale" data-tab="tab-scale">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10.47 2.05L2 10.5l8.5 8.5 1.41-1.41L5.83 11.5H21v-2H5.83l6.06-6.06-1.42-1.39z"/>
+          </svg>
+          Scale
+        </button>
+        <button class="tab-btn" id="tab-btn-style" data-tab="tab-style">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+          </svg>
+          Geometry
+        </button>
+        <button class="tab-btn" id="tab-btn-text" data-tab="tab-text">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.5 4v3h5v12h3V7h5V4h-13zm19 5h-9v3h3v7h3v-7h3V9z"/>
+          </svg>
+          Type
+        </button>
+        <button class="tab-btn" id="tab-btn-presets" data-tab="tab-presets">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm0 8H7v-2h10v2z"/>
+          </svg>
+          Memory
+        </button>
+      </div>
+
+      <!-- Tab Content: Scale & Limits -->
+      <div class="sidebar-tab-content active" id="tab-scale">
+        <div class="input-group">
+          <div class="input-section-title">Values & Intervals</div>
+          
+          <div class="input-field-wrapper">
+            <label for="start-val">Start Value</label>
+            <input type="number" id="start-val" class="text-input" value="100" step="10">
+          </div>
+          
+          <div class="input-field-wrapper">
+            <label for="end-val">End Value</label>
+            <input type="number" id="end-val" class="text-input" value="900" step="10">
+          </div>
+          
+          <div class="input-field-wrapper">
+            <label for="step-val">Step Interval</label>
+            <input type="number" id="step-val" class="text-input" value="100" step="5">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="label-mode">Label Configuration Mode</label>
+            <select id="label-mode" class="text-input">
+              <option value="auto">Automatic Intervals</option>
+              <option value="custom">Custom List (Fractions, Letters...)</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper" id="custom-labels-wrapper" style="display: none;">
+            <label for="custom-labels-input">Custom Labels (comma-separated)</label>
+            <input type="text" id="custom-labels-input" class="text-input" value="0, 1/4, 1/2, 3/4, 1" placeholder="e.g. 0, 1/4, 1/2, 3/4, 1 or A, B, C">
+          </div>
+
+          <div class="input-field-wrapper" id="label-frequency-wrapper">
+            <label for="label-frequency">Label Frequency</label>
+            <select id="label-frequency" class="text-input">
+              <option value="all">Label All Major Ticks</option>
+              <option value="every2nd">Label Every 2nd Tick</option>
+              <option value="ends">Label Only Start & End Ticks</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="minor-subdivisions">Minor Ticks Subdivision</label>
+            <select id="minor-subdivisions" class="text-input">
+              <option value="1">None</option>
+              <option value="2">2 subdivisions (halves)</option>
+              <option value="3">3 subdivisions (thirds)</option>
+              <option value="4">4 subdivisions (quarters)</option>
+              <option value="5">5 subdivisions (fifths)</option>
+              <option value="10">10 subdivisions (tenths)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Layout Extensions</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="left-ext">Left Line Extension</label>
+              <span id="left-ext-val">50</span>
+            </div>
+            <input type="range" id="left-ext" min="0" max="150" value="50">
+          </div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="right-ext">Right Line Extension</label>
+              <span id="right-ext-val">50</span>
+            </div>
+            <input type="range" id="right-ext" min="0" max="150" value="50">
+          </div>
+        </div>
+
+        <!-- Pointing Arrow / Callout -->
+        <div class="input-group">
+          <div class="input-section-title">Pointing Arrow (Callout)</div>
+          
+          <div class="settings-row">
+            <label for="show-arrow">Show Pointing Arrow</label>
+            <input type="checkbox" id="show-arrow" class="checkbox-input">
+          </div>
+          
+          <div id="arrow-controls-container" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="input-field-wrapper">
+              <label for="arrow-val">Arrow Position (Value)</label>
+              
+              <!-- For Auto Mode -->
+              <div id="arrow-val-auto-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="number" id="arrow-val" class="text-input" value="500">
+                <input type="range" id="arrow-val-slider" min="100" max="900" value="500">
+              </div>
+              
+              <!-- For Custom Mode -->
+              <div id="arrow-val-custom-wrapper" style="display: none;">
+                <select id="arrow-val-custom" class="text-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
+            </div>
+            
+            <div class="input-field-wrapper">
+              <label for="arrow-label">Arrow Label Text</label>
+              <input type="text" id="arrow-label" class="text-input" placeholder="e.g. x, A, 1/2 or blank" value="x">
+            </div>
+            
+            <div class="input-field-wrapper">
+              <label for="arrow-placement">Placement / Direction</label>
+              <select id="arrow-placement" class="text-input">
+                <option value="above" selected>Above Axis (Points Down)</option>
+                <option value="below">Below Axis (Points Up)</option>
+              </select>
+            </div>
+
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="arrow-length">Arrow Length (Shaft)</label>
+                <span id="arrow-length-val">28</span>
+              </div>
+              <input type="range" id="arrow-length" min="10" max="120" value="28">
+            </div>
+            
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="arrow-thickness">Arrow Thickness</label>
+                <span id="arrow-thickness-val">2.5</span>
+              </div>
+              <input type="range" id="arrow-thickness" min="1" max="10" step="0.5" value="2.5">
+            </div>
+
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="arrow-head-size">Arrowhead Size</label>
+                <span id="arrow-head-size-val">7</span>
+              </div>
+              <input type="range" id="arrow-head-size" min="4" max="25" value="7">
+            </div>
+
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="arrow-offset">Arrow Gap Offset</label>
+                <span id="arrow-offset-val">5</span>
+              </div>
+              <input type="range" id="arrow-offset" min="0" max="40" value="5">
+            </div>
+            
+            <div class="input-field-wrapper">
+              <label for="color-arrow">Arrow & Label Color</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-arrow" value="#EF4444">
+                <input type="text" id="color-arrow-text" class="text-input color-text-val" value="#EF4444">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vector Arrow (Interval) -->
+        <div class="input-group">
+          <div class="input-section-title">Vector Arrow (Interval)</div>
+          
+          <div class="settings-row">
+            <label for="show-vector">Show Vector (A to B)</label>
+            <input type="checkbox" id="show-vector" class="checkbox-input">
+          </div>
+          
+          <div id="vector-controls-container" style="display: none; flex-direction: column; gap: 12px;">
+            <!-- Vector Start (A) -->
+            <div class="input-field-wrapper">
+              <label for="vector-val-a">Start Position (A)</label>
+              
+              <!-- For Auto Mode -->
+              <div id="vector-a-auto-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="number" id="vector-val-a" class="text-input" value="200">
+                <input type="range" id="vector-val-a-slider" min="100" max="900" value="200">
+              </div>
+              
+              <!-- For Custom Mode -->
+              <div id="vector-a-custom-wrapper" style="display: none;">
+                <select id="vector-val-a-custom" class="text-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Vector End (B) -->
+            <div class="input-field-wrapper">
+              <label for="vector-val-b">End Position (B)</label>
+              
+              <!-- For Auto Mode -->
+              <div id="vector-b-auto-wrapper" style="display: flex; flex-direction: column; gap: 8px;">
+                <input type="number" id="vector-val-b" class="text-input" value="700">
+                <input type="range" id="vector-val-b-slider" min="100" max="900" value="700">
+              </div>
+              
+              <!-- For Custom Mode -->
+              <div id="vector-b-custom-wrapper" style="display: none;">
+                <select id="vector-val-b-custom" class="text-input">
+                  <!-- Will be populated dynamically -->
+                </select>
+              </div>
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="vector-label">Vector Label Text</label>
+              <input type="text" id="vector-label" class="text-input" placeholder="e.g. +5, A to B, or blank" value="+5">
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="vector-style">Path Style</label>
+              <select id="vector-style" class="text-input">
+                <option value="arc" selected>Curved Arc</option>
+                <option value="straight">Straight Line</option>
+              </select>
+            </div>
+
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="vector-height">Vector Height / Arch Height</label>
+                <span id="vector-height-val">30</span>
+              </div>
+              <input type="range" id="vector-height" min="10" max="100" value="30">
+            </div>
+
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="vector-thickness">Vector Thickness</label>
+                <span id="vector-thickness-val">2.5</span>
+              </div>
+              <input type="range" id="vector-thickness" min="1" max="10" step="0.5" value="2.5">
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="color-vector">Vector Color</label>
+              <div class="color-picker-container">
+                <input type="color" id="color-vector" value="#3B82F6">
+                <input type="text" id="color-vector-text" class="text-input color-text-val" value="#3B82F6">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Geometry & Color -->
+      <div class="sidebar-tab-content" id="tab-style">
+        <div class="input-group">
+          <div class="input-section-title">Axis & Arrowheads</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="line-width">Axis Line Thickness</label>
+              <span id="line-width-val">2</span>
+            </div>
+            <input type="range" id="line-width" min="1" max="12" step="0.5" value="2">
+          </div>
+          
+          <div class="input-field-wrapper">
+            <label for="arrow-type">Arrowhead Style</label>
+            <select id="arrow-type" class="text-input">
+              <option value="right">Right End Only</option>
+              <option value="both">Both Ends</option>
+              <option value="left">Left End Only</option>
+              <option value="none">No Arrowheads</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="axis-y">Axis Height (Y)</label>
+              <span id="axis-y-val">100</span>
+            </div>
+            <input type="range" id="axis-y" min="40" max="180" value="100">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Ticks Styling</div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="tick-height">Tick Mark Height</label>
+              <span id="tick-height-val">20</span>
+            </div>
+            <input type="range" id="tick-height" min="10" max="90" value="20">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="tick-width">Tick Mark Thickness</label>
+              <span id="tick-width-val">1.5</span>
+            </div>
+            <input type="range" id="tick-width" min="1" max="12" step="0.5" value="1.5">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="tick-alignment">Tick Line Alignment</label>
+            <select id="tick-alignment" class="text-input">
+              <option value="centered">Centered (crosses axis)</option>
+              <option value="above">Above Axis Line</option>
+              <option value="below">Below Axis Line</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ruler Body Style -->
+        <div class="input-group">
+          <div class="input-section-title">Ruler Mode Body</div>
+          
+          <div class="input-field-wrapper">
+            <label for="ruler-style">Ruler Body Theme</label>
+            <select id="ruler-style" class="text-input">
+              <option value="none" selected>None (No Ruler Body)</option>
+              <option value="frosted">Frosted Glass (Sleek)</option>
+              <option value="yellow">School Yellow (Plastic)</option>
+              <option value="wood">Vintage Wood (Amber)</option>
+            </select>
+          </div>
+
+          <div id="ruler-controls-container" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="input-field-wrapper">
+              <div class="range-labels">
+                <label for="ruler-height">Ruler Body Height (px)</label>
+                <span id="ruler-height-val">60</span>
+              </div>
+              <input type="range" id="ruler-height" min="30" max="120" value="60">
+            </div>
+
+            <div class="input-field-wrapper">
+              <label for="ruler-placement">Ruler Alignment to Axis</label>
+              <select id="ruler-placement" class="text-input">
+                <option value="center" selected>Centered (Axis in Middle)</option>
+                <option value="top">Ticks on Top (Axis on Top Edge)</option>
+                <option value="bottom">Ticks on Bottom (Axis on Bottom Edge)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Colors</div>
+          
+          <div class="input-field-wrapper">
+            <label for="color-line">Axis & Ticks Color</label>
+            <div class="color-picker-container">
+              <input type="color" id="color-line" value="#1A1A1A">
+              <input type="text" id="color-line-text" class="text-input color-text-val" value="#1A1A1A">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Typography & Formatting -->
+      <div class="sidebar-tab-content" id="tab-text">
+        <div class="input-group">
+          <div class="input-section-title">Font Families</div>
+          
+          <div class="input-field-wrapper">
+            <label for="font-family">Font Family Presets</label>
+            <select id="font-family" class="text-input">
+              <option value="system-ui, sans-serif">Clean Sans-Serif</option>
+              <option value="'Inter', sans-serif">Inter (Modern Sans)</option>
+              <option value="'Outfit', sans-serif">Outfit (Tech Bold)</option>
+              <option value="'Vazirmatn', sans-serif">Vazirmatn (Complex / Persian)</option>
+              <option value="'Playfair Display', serif">Playfair Display (Elegant Serif)</option>
+              <option value="'JetBrains Mono', monospace">JetBrains Mono (Coding)</option>
+              <option value="custom">-- Custom Font Family --</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper" id="custom-font-wrapper" style="display: none;">
+            <label for="custom-font-family">Custom Font Family Name</label>
+            <input type="text" id="custom-font-family" class="text-input" placeholder="e.g. B Nazanin, Tahoma, Arial">
+          </div>
+          
+          <div class="settings-row">
+            <label for="persian-numbers">Use Persian Numerals</label>
+            <input type="checkbox" id="persian-numbers" class="checkbox-input">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Sizing & Styling</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="font-size">Font Size</label>
+              <span id="font-size-val">22</span>
+            </div>
+            <input type="range" id="font-size" min="10" max="60" value="22">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="font-weight">Font Weight</label>
+            <select id="font-weight" class="text-input">
+              <option value="300">Light (300)</option>
+              <option value="400" selected>Regular (400)</option>
+              <option value="500">Medium (500)</option>
+              <option value="700">Bold (700)</option>
+            </select>
+          </div>
+
+          <div class="settings-row">
+            <label for="font-style-italic">Italic Text</label>
+            <input type="checkbox" id="font-style-italic" class="checkbox-input">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="letter-spacing">Letter Spacing (px)</label>
+              <span id="letter-spacing-val">1</span>
+            </div>
+            <input type="range" id="letter-spacing" min="-3" max="15" step="0.5" value="1">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="label-rotation">Label Rotation (degrees)</label>
+              <span id="label-rotation-val">0°</span>
+            </div>
+            <input type="range" id="label-rotation" min="-90" max="90" step="5" value="0">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="label-offset">Label Offset (Y)</label>
+              <span id="label-offset-val">25</span>
+            </div>
+            <input type="range" id="label-offset" min="10" max="80" value="25">
+          </div>
+          
+          <div class="input-field-wrapper">
+            <label for="color-text">Labels Color</label>
+            <div class="color-picker-container">
+              <input type="color" id="color-text" value="#1A1A1A">
+              <input type="text" id="color-text-text" class="text-input color-text-val" value="#1A1A1A">
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Label Formatting</div>
+          
+          <div class="input-field-wrapper">
+            <label for="label-prefix">Prefix</label>
+            <input type="text" id="label-prefix" class="text-input" placeholder="e.g. $">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="label-suffix">Suffix</label>
+            <input type="text" id="label-suffix" class="text-input" placeholder="e.g. °C">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Memory (Presets list has been converted here) -->
+      <div class="sidebar-tab-content" id="tab-presets">
+        <div class="input-group">
+          <div class="input-section-title">Preset Memory</div>
+          
+          <div class="input-field-wrapper">
+            <label for="new-preset-name">Save Current Configuration</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="new-preset-name" class="text-input" placeholder="e.g. Slate 900" style="flex: 1;">
+              <button id="btn-save-preset" class="btn" style="width: auto; padding: 0 14px;">Save</button>
+            </div>
+          </div>
+
+          <div class="saved-presets-container">
+            <label style="font-size: 11px; color: var(--text-secondary); display: block; margin-bottom: 8px; font-family: var(--font-mono);">My Saved Designs</label>
+            <div id="custom-presets-list" class="custom-presets-list">
+              <!-- Dynamically populated -->
+              <div class="empty-presets-message">No custom presets saved.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons in Right Sidebar Footer -->
+      <footer class="sidebar-footer">
+        <button id="btn-export-png" class="btn btn-primary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export PNG
+        </button>
+        <button id="btn-copy-png" class="btn btn-secondary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy PNG Image
+        </button>
+        <button id="btn-copy-svg" class="btn btn-secondary">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copy SVG Code
+        </button>
+      </footer>
+    </aside>
+  </div>
+  
+  <!-- Toast alert overlay -->
+  <div id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+.idea/
+.vscode/
+*.log
+test_raw.json
+__pycache__/
+*.pyc

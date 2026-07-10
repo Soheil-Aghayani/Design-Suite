@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+
+<div class="controls">
+    <div class="control-group">
+        <label for="val">Value (0-100)</label>
+        <input type="number" id="val" value="75" min="0" max="100">
+    </div>
+    <div class="control-group">
+        <label for="label">Label</label>
+        <input type="text" id="label" value="Storage">
+    </div>
+    <div class="control-group">
+        <label>Arc Color</label>
+        <div class="row">
+            <input type="color" id="fg" value="#007aff">
+            <input type="text" id="fg-hex" value="#007AFF" style="width: 80px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Track Color</label>
+        <div class="row">
+            <input type="color" id="bg" value="#e9e9eb">
+            <input type="text" id="bg-hex" value="#E9E9EB" style="width: 80px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label for="gap">Gap (°)</label>
+        <input type="range" id="gap" min="0" max="180" value="60">
+    </div>
+    <div class="control-group">
+        <label for="thick">Thickness (%)</label>
+        <input type="range" id="thick" min="5" max="30" value="10">
+    </div>
+    <div class="control-group">
+        <div class="row">
+            <input type="checkbox" id="seg">
+            <label for="seg">Segmented Mode</label>
+        </div>
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button onclick="download()">Download PNG</button>
+    </div>
+</div>
+
+<canvas id="canvas" width="1000" height="1000" style="width: 500px; height: 500px;"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+    const ui = ['val','label','fg','fg-hex','bg','bg-hex','gap','thick','seg'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+    
+    let prefs = { persian: true, bold: false, italic: false, size: 24, font: 'Segoe UI' };
+
+    function toPersian(n) { if (!prefs.persian) return n.toString(); const id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']; return n.toString().replace(/[0-9]/g, w => id[+w]); }
+
+    // Hex Sync
+    ['fg','bg'].forEach(p => {
+        ui[p].oninput = () => { ui[p+'-hex'].value = ui[p].value.toUpperCase(); draw(); save(); };
+        ui[p+'-hex'].oninput = () => { if(/^#[0-9A-F]{6}$/i.test(ui[p+'-hex'].value)) { ui[p].value = ui[p+'-hex'].value; draw(); save(); } };
+    });
+
+    function draw() {
+        ctx.clearRect(0,0,1000,1000);
+        const v = parseInt(ui.val.value)||0, gap = (ui.gap.value*Math.PI)/180, tr = ui.thick.value/100;
+        const cx = 500, cy = 500, s = 800, thick = s*tr, sA = (Math.PI/2)+(gap/2), tS = (2*Math.PI)-gap, pS = tS*(v/100);
+
+        ctx.lineWidth = thick; ctx.lineCap = 'round';
+        
+        // Track
+        ctx.strokeStyle = ui.bg.value; 
+        ctx.beginPath(); ctx.arc(cx,cy,(s-thick)/2, sA, sA+tS); ctx.stroke();
+        
+        // Progress
+        ctx.strokeStyle = ui.fg.value;
+        if(ui.seg.checked) ctx.setLineDash([20, 10]); else ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(cx,cy,(s-thick)/2, sA, sA+pS); ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Text
+        ctx.fillStyle = '#1c1c1e';
+        ctx.font = `bold ${s*0.14}px "${prefs.font}"`;
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(toPersian(v)+'%', cx, cy);
+        
+        ctx.fillStyle = '#8e8e93';
+        ctx.font = `${s*0.06}px "${prefs.font}"`;
+        ctx.fillText(ui.label.value, cx, cy+s*0.12);
+    }
+
+    function save() {
+        const data = Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {});
+        localStorage.setItem('suite_tool_gauge', JSON.stringify(data));
+    }
+
+    function load() {
+        const raw = localStorage.getItem('suite_tool_gauge');
+        if (raw) {
+            const d = JSON.parse(raw);
+            Object.keys(d).forEach(k => { if(ui[k]) { if(ui[k].type==='checkbox') ui[k].checked = d[k]; else ui[k].value = d[k]; } });
+        }
+        draw();
+    }
+
+    function download() { const l = document.createElement('a'); l.download = `gauge-${Date.now()}.png`; l.href = canvas.toDataURL(); l.click(); }
+
+    window.addEventListener('message', e => { if(e.data.type === 'SYNC_PREFS') { prefs = e.data.prefs; draw(); } });
+    Object.values(ui).forEach(el => { if(el.oninput) return; el.oninput = () => { draw(); save(); } });
+    window.onload = () => { window.parent.postMessage({type:'GET_PREFS'}, '*'); load(); };
+</script>
+</body>
+</html>

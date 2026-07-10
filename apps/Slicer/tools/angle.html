@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/tool.css">
+</head>
+<body>
+
+<div class="controls">
+    <div class="control-group">
+        <label for="deg">Angle (°)</label>
+        <input type="number" id="deg" value="135" step="0.1">
+    </div>
+    <div class="control-group">
+        <label for="mode">View Mode</label>
+        <select id="mode">
+            <option value="standard">Standard (<180)</option>
+            <option value="outer">Outer (>180)</option>
+            <option value="full">Reflex (0-360)</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="stroke">Stroke Width</label>
+        <input type="range" id="stroke" min="1" max="50" value="12">
+    </div>
+    <div class="control-group">
+        <label for="arc-stroke">Arc Thickness</label>
+        <input type="range" id="arc-stroke" min="1" max="50" value="9">
+    </div>
+    <div class="control-group">
+        <label for="arc-ratio">Arc Radius (%)</label>
+        <input type="range" id="arc-ratio" min="5" max="45" value="22">
+    </div>
+    <div class="control-group">
+        <label>Color</label>
+        <div class="row">
+            <input type="color" id="color" value="#1c1c1e">
+            <input type="text" id="color-hex" value="#1C1C1E" style="width: 80px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <div class="row">
+            <input type="checkbox" id="label" checked>
+            <label for="label">Show Label</label>
+        </div>
+    </div>
+    <div class="control-group">
+        <label>&nbsp;</label>
+        <button onclick="download()">Download PNG</button>
+    </div>
+</div>
+
+<canvas id="canvas" width="1000" height="1000" style="width: 500px; height: 500px;"></canvas>
+
+<script>
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+    const ui = ['deg','mode','stroke','arc-stroke','arc-ratio','color','color-hex','label'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+    
+    let prefs = { persian: true, bold: false, italic: false, size: 24, font: 'Segoe UI' };
+
+    function toPersian(n) { if (!prefs.persian) return n.toString(); const id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']; return n.toString().replace(/[0-9]/g, w => id[+w]); }
+
+    // Hex Sync
+    ui.color.oninput = () => { ui['color-hex'].value = ui.color.value.toUpperCase(); draw(); save(); };
+    ui['color-hex'].oninput = () => { if(/^#[0-9A-F]{6}$/i.test(ui['color-hex'].value)) { ui.color.value = ui['color-hex'].value; draw(); save(); } };
+
+    function draw() {
+        ctx.clearRect(0,0,1000,1000);
+        let deg = parseFloat(ui.deg.value) || 0;
+        const stroke = parseInt(ui.stroke.value), arcStroke = parseInt(ui['arc-stroke'].value), arcRatio = parseInt(ui['arc-ratio'].value)/100;
+        const cx = 500, cy = 500, L = 400, r = L * arcRatio;
+        
+        // Handle Modes
+        if(ui.mode.value === 'outer' && deg < 180) deg = 360 - deg;
+        if(ui.mode.value === 'standard' && deg > 180) deg = 360 - deg;
+
+        const theta = (deg % 360) * (Math.PI / 180);
+        ctx.lineCap = 'round'; ctx.strokeStyle = ui.color.value;
+
+        // Base Line
+        ctx.lineWidth = stroke;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + L, cy); ctx.stroke();
+        
+        // Rotated Line
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + L * Math.cos(-theta), cy + L * Math.sin(-theta)); ctx.stroke();
+
+        // Arc
+        ctx.lineWidth = arcStroke;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, -theta, true);
+        ctx.stroke();
+
+        // Center Dot
+        ctx.fillStyle = ui.color.value;
+        ctx.beginPath(); ctx.arc(cx, cy, stroke * 0.4, 0, Math.PI * 2); ctx.fill();
+
+        if (ui.label.checked) {
+            const mid = -theta / 2, lr = r * 1.4;
+            ctx.font = `bold ${prefs.size}px "${prefs.font}"`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(`${toPersian(deg.toFixed(1).replace('.0', ''))}°`, cx + lr * Math.cos(mid), cy + lr * Math.sin(mid));
+        }
+    }
+
+    function save() {
+        const data = Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {});
+        localStorage.setItem('suite_tool_angle', JSON.stringify(data));
+    }
+
+    function load() {
+        const raw = localStorage.getItem('suite_tool_angle');
+        if (raw) {
+            const d = JSON.parse(raw);
+            Object.keys(d).forEach(k => { if(ui[k]) { if(ui[k].type==='checkbox') ui[k].checked = d[k]; else ui[k].value = d[k]; } });
+        }
+        draw();
+    }
+
+    function download() { const l = document.createElement('a'); l.download = `angle-${Date.now()}.png`; l.href = canvas.toDataURL(); l.click(); }
+
+    window.addEventListener('message', e => { if(e.data.type === 'SYNC_PREFS') { prefs = e.data.prefs; draw(); } });
+    Object.values(ui).forEach(el => { if(el.oninput) return; el.oninput = () => { draw(); save(); } });
+    window.onload = () => { window.parent.postMessage({type:'GET_PREFS'}, '*'); load(); };
+</script>
+</body>
+</html>

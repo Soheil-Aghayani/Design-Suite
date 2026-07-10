@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/tool.css">
+    <script type="text/javascript" src="https://unpkg.com/qr-code-styling@1.5.0/lib/qr-code-styling.js"></script>
+    <style>
+        #canvas-container { max-width: 100%; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .span-all { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="control-group span-all">
+        <label for="data">Content</label>
+        <input type="text" id="data" value="https://google.com">
+    </div>
+    <div class="control-group">
+        <label>Foreground</label>
+        <div class="row">
+            <input type="color" id="fg" value="#000000">
+            <input type="text" id="fg-hex" value="#000000" style="width: 80px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Background</label>
+        <div class="row">
+            <input type="color" id="bg" value="#ffffff">
+            <input type="text" id="bg-hex" value="#FFFFFF" style="width: 80px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label for="style">Dots Style</label>
+        <select id="style">
+            <option value="square">Square</option>
+            <option value="dots">Dots</option>
+            <option value="rounded">Rounded</option>
+            <option value="extra-rounded">Extra Rounded</option>
+        </select>
+    </div>
+    <div class="control-group">
+        <label for="logo-file">Logo File</label>
+        <input type="file" id="logo-file" accept="image/*">
+    </div>
+    <div class="control-group" id="overlay-wrap">
+        <div class="row">
+            <input type="checkbox" id="logo-color">
+            <label for="logo-color">Logo Color Overlay</label>
+        </div>
+    </div>
+    <div class="control-group" id="loop-wrap">
+        <div class="row">
+            <input type="checkbox" id="gif-loop" checked>
+            <label for="gif-loop">GIF Loop</label>
+        </div>
+    </div>
+    <div class="control-group span-all">
+        <div class="row">
+            <button onclick="download('png')" style="flex: 1;">Download PNG</button>
+            <button class="secondary" onclick="download('svg')" style="flex: 1;">Download SVG</button>
+        </div>
+    </div>
+</div>
+
+<div id="canvas-container"></div>
+
+<script>
+    const container = document.getElementById('canvas-container');
+    const el = id => document.getElementById(id);
+    const ui = ['data','fg','fg-hex','bg','bg-hex','style','logo-file','logo-color','gif-loop'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+    
+    let qrCode, logoData = null, isGif = false;
+
+    // Hex Sync
+    ['fg','bg'].forEach(p => {
+        ui[p].oninput = () => { ui[p+'-hex'].value = ui[p].value.toUpperCase(); updateQR(); save(); };
+        ui[p+'-hex'].oninput = () => { if(/^#[0-9A-F]{6}$/i.test(ui[p+'-hex'].value)) { ui[p].value = ui[p+'-hex'].value; updateQR(); save(); } };
+    });
+
+    function updateQR() {
+        if (!qrCode) {
+            qrCode = new QRCodeStyling({
+                width: 600, height: 600,
+                type: "svg",
+                dotsOptions: { color: ui.fg.value, type: ui.style.value },
+                backgroundOptions: { color: ui.bg.value },
+                imageOptions: { crossOrigin: "anonymous", margin: 10 }
+            });
+            qrCode.append(container);
+        }
+
+        const options = {
+            data: ui.data.value,
+            dotsOptions: { color: ui.fg.value, type: ui.style.value },
+            backgroundOptions: { color: ui.bg.value },
+            image: logoData
+        };
+
+        if (isGif) {
+            el('overlay-wrap').style.opacity = 0.3; el('overlay-wrap').style.pointerEvents = 'none';
+            el('loop-wrap').style.display = 'block';
+        } else {
+            el('overlay-wrap').style.opacity = 1; el('overlay-wrap').style.pointerEvents = 'all';
+            el('loop-wrap').style.display = 'none';
+        }
+
+        qrCode.update(options);
+    }
+
+    ui['logo-file'].onchange = e => {
+        const file = e.target.files[0]; if(!file) return;
+        isGif = file.type === 'image/gif';
+        const reader = new FileReader();
+        reader.onload = ev => { logoData = ev.target.result; updateQR(); save(); };
+        reader.readAsDataURL(file);
+    };
+
+    function download(ext) { qrCode.download({ name: "qr-code", extension: ext }); }
+
+    function save() {
+        const data = Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {});
+        localStorage.setItem('suite_tool_qr', JSON.stringify(data));
+    }
+
+    function load() {
+        const raw = localStorage.getItem('suite_tool_qr');
+        if (raw) {
+            const d = JSON.parse(raw);
+            Object.keys(d).forEach(k => { if(ui[k]) { if(ui[k].type==='checkbox') ui[k].checked = d[k]; else if(ui[k].type !== 'file') ui[k].value = d[k]; } });
+        }
+        updateQR();
+    }
+
+    Object.values(ui).forEach(el => { if(el.oninput || el.onchange) return; el.oninput = () => { updateQR(); save(); } });
+    window.onload = load;
+</script>
+</body>
+</html>

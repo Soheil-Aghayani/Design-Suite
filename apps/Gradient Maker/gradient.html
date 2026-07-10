@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Gradient Generator (1:1)</title>
+  <style>
+    :root { --gap: 16px; --size: 240px; }
+    body { margin: 24px; font-family: system-ui, -apple-system, Segoe UI, Roboto; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    input, button {
+      padding: 10px 12px; font-size: 14px; border-radius: 10px; border: 1px solid #ddd;
+    }
+    button { cursor: pointer; }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(var(--size), 1fr));
+      gap: var(--gap);
+    }
+    .tile {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;  /* نسبت 1 به 1 */
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,.08);
+      border: 1px solid rgba(0,0,0,.06);
+    }
+    .meta {
+      position: absolute;
+      left: 10px; bottom: 10px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.75);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+    }
+    .actions {
+      position: absolute;
+      right: 10px; bottom: 10px;
+      display: flex; gap: 8px;
+    }
+    .mini {
+      padding: 6px 8px; font-size: 12px; border-radius: 10px;
+      background: rgba(255,255,255,.75);
+      border: 1px solid rgba(0,0,0,.08);
+    }
+    .mini:hover { background: rgba(255,255,255,.9); }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <label>تعداد:</label>
+    <input id="count" type="number" min="1" value="17" style="width:100px" />
+    <label>سایز هر مربع (px):</label>
+    <input id="size" type="number" min="120" value="240" style="width:120px" />
+    <button id="gen">ساختن</button>
+    <button id="regen">ری‌رنـدم (تصادفی جدید)</button>
+  </div>
+
+  <div id="grid"></div>
+
+  <script>
+    // ---------- Utilities ----------
+    const rand = (a, b) => Math.random() * (b - a) + a;
+    const randi = (a, b) => Math.floor(rand(a, b + 1));
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+    // Pleasant palette (similar vibe to your screenshot)
+    const palette = [
+      [  6,  12,  34],  // deep navy
+      [ 76,  44, 152],  // purple
+      [  0, 164, 192],  // teal
+      [255,  64, 129],  // pink
+      [255, 153,  51],  // orange
+      [255, 215,  80],  // warm yellow
+      [ 92, 107, 192],  // indigo
+      [186, 104, 200],  // lavender
+      [120, 144, 156],  // blue-grey
+      [236,  64, 122],  // magenta
+    ];
+
+    function pickColor() {
+      const c = palette[randi(0, palette.length - 1)];
+      return { r: c[0], g: c[1], b: c[2] };
+    }
+
+    function mix(c1, c2, t) {
+      return {
+        r: Math.round(c1.r + (c2.r - c1.r) * t),
+        g: Math.round(c1.g + (c2.g - c1.g) * t),
+        b: Math.round(c1.b + (c2.b - c1.b) * t),
+      };
+    }
+
+    function rgb(c) { return `rgb(${c.r} ${c.g} ${c.b})`; }
+
+    // Create layered gradient background similar to modern “soft gradients”
+    function buildBackground() {
+      const baseA = pickColor();
+      const baseB = pickColor();
+      const baseC = pickColor();
+
+      // ensure contrast a bit
+      const t = rand(0.25, 0.75);
+      const mid = mix(baseA, baseB, t);
+
+      const a1 = rand(0, 360), a2 = rand(0, 360);
+      const p1x = rand(10, 90), p1y = rand(10, 90);
+      const p2x = rand(10, 90), p2y = rand(10, 90);
+
+      const vignette = `radial-gradient(120% 120% at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.25) 100%)`;
+
+      // grain overlay via repeating linear gradients
+      const grain1 = `repeating-linear-gradient(${rand(0,180)}deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 3px)`;
+      const grain2 = `repeating-linear-gradient(${rand(0,180)}deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 5px)`;
+
+      // Main gradients (layered)
+      const g1 = `linear-gradient(${a1}deg, ${rgb(baseA)} 0%, ${rgb(mid)} 45%, ${rgb(baseB)} 100%)`;
+      const g2 = `radial-gradient(90% 90% at ${p1x}% ${p1y}%, rgba(${baseC.r},${baseC.g},${baseC.b},0.65) 0%, rgba(0,0,0,0) 60%)`;
+      const g3 = `radial-gradient(70% 70% at ${p2x}% ${p2y}%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 55%)`;
+
+      return {
+        css: `${g3}, ${g2}, ${g1}, ${grain1}, ${grain2}, ${vignette}`,
+        info: `${a1.toFixed(0)}deg | A:${rgb(baseA)} B:${rgb(baseB)} C:${rgb(baseC)}`
+      };
+    }
+
+    function setGridSize(px) {
+      document.documentElement.style.setProperty("--size", px + "px");
+    }
+
+    // Render a tile to PNG using canvas
+    async function tileToPNG(tileEl, px = 1024) {
+      const canvas = document.createElement("canvas");
+      canvas.width = px;
+      canvas.height = px;
+      const ctx = canvas.getContext("2d");
+
+      // Draw background using gradients approximations (canvas can't directly paint CSS layers)
+      // We'll approximate with 1 linear + 2 radial + vignette + noise
+      // For export fidelity, we store params in dataset.
+      const data = JSON.parse(tileEl.dataset.params);
+
+      // linear
+      const lg = ctx.createLinearGradient(
+        0, 0,
+        Math.cos(data.a1) * px, Math.sin(data.a1) * px
+      );
+      lg.addColorStop(0, data.baseA);
+      lg.addColorStop(0.45, data.mid);
+      lg.addColorStop(1, data.baseB);
+      ctx.fillStyle = lg;
+      ctx.fillRect(0,0,px,px);
+
+      // radial 1
+      const rg1 = ctx.createRadialGradient(
+        (data.p1x/100)*px, (data.p1y/100)*px, 0,
+        (data.p1x/100)*px, (data.p1y/100)*px, 0.9*px
+      );
+      rg1.addColorStop(0, data.baseCrgba);
+      rg1.addColorStop(0.6, "rgba(0,0,0,0)");
+      ctx.fillStyle = rg1;
+      ctx.fillRect(0,0,px,px);
+
+      // radial 2 (highlight)
+      const rg2 = ctx.createRadialGradient(
+        (data.p2x/100)*px, (data.p2y/100)*px, 0,
+        (data.p2x/100)*px, (data.p2y/100)*px, 0.7*px
+      );
+      rg2.addColorStop(0, "rgba(255,255,255,0.28)");
+      rg2.addColorStop(0.55, "rgba(255,255,255,0)");
+      ctx.fillStyle = rg2;
+      ctx.fillRect(0,0,px,px);
+
+      // vignette
+      const vg = ctx.createRadialGradient(px/2, px/2, px*0.2, px/2, px/2, px*0.75);
+      vg.addColorStop(0, "rgba(0,0,0,0)");
+      vg.addColorStop(0.7, "rgba(0,0,0,0.12)");
+      vg.addColorStop(1, "rgba(0,0,0,0.25)");
+      ctx.fillStyle = vg;
+      ctx.fillRect(0,0,px,px);
+
+      // noise (simple)
+      const img = ctx.getImageData(0,0,px,px);
+      const arr = img.data;
+      const amp = 10; // noise amplitude
+      for (let i=0; i<arr.length; i+=4) {
+        const n = (Math.random()*2-1)*amp;
+        arr[i]   = clamp(arr[i]   + n, 0, 255);
+        arr[i+1] = clamp(arr[i+1] + n, 0, 255);
+        arr[i+2] = clamp(arr[i+2] + n, 0, 255);
+      }
+      ctx.putImageData(img,0,0);
+
+      return canvas.toDataURL("image/png");
+    }
+
+    function downloadDataURL(dataURL, filename) {
+      const a = document.createElement("a");
+      a.href = dataURL;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    // ---------- Render ----------
+    function makeTile(index) {
+      const { css } = buildBackground();
+
+      // For export: store parameters similar to buildBackground, but consistent.
+      // We'll reconstruct by sampling similar choices again:
+      // (Simpler: derive from css is hard. Instead rebuild with deterministic params here.)
+      const baseA = pickColor(), baseB = pickColor(), baseC = pickColor();
+      const t = rand(0.25, 0.75);
+      const mid = mix(baseA, baseB, t);
+      const a1deg = rand(0, 360);
+      const a1rad = (a1deg * Math.PI) / 180;
+      const p1x = rand(10, 90), p1y = rand(10, 90);
+      const p2x = rand(10, 90), p2y = rand(10, 90);
+
+      const css2 = `
+        radial-gradient(70% 70% at ${p2x}% ${p2y}%, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0) 55%),
+        radial-gradient(90% 90% at ${p1x}% ${p1y}%, rgba(${baseC.r},${baseC.g},${baseC.b},0.65) 0%, rgba(0,0,0,0) 60%),
+        linear-gradient(${a1deg}deg, ${rgb(baseA)} 0%, ${rgb(mid)} 45%, ${rgb(baseB)} 100%),
+        repeating-linear-gradient(${rand(0,180)}deg, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 3px),
+        repeating-linear-gradient(${rand(0,180)}deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 5px),
+        radial-gradient(120% 120% at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.12) 70%, rgba(0,0,0,0.25) 100%)
+      `.trim();
+
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.style.backgroundImage = css2;
+
+      tile.dataset.params = JSON.stringify({
+        a1: a1rad,
+        p1x, p1y, p2x, p2y,
+        baseA: rgb(baseA),
+        baseB: rgb(baseB),
+        baseCrgba: `rgba(${baseC.r},${baseC.g},${baseC.b},0.65)`,
+        mid: rgb(mid)
+      });
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = `#${index+1}`;
+
+      const actions = document.createElement("div");
+      actions.className = "actions";
+
+      const btn = document.createElement("button");
+      btn.className = "mini";
+      btn.textContent = "دانلود PNG";
+      btn.onclick = async () => {
+        const dataURL = await tileToPNG(tile, 1024);
+        downloadDataURL(dataURL, `gradient_${index+1}.png`);
+      };
+
+      actions.appendChild(btn);
+      tile.appendChild(meta);
+      tile.appendChild(actions);
+      return tile;
+    }
+
+    function generate() {
+      const n = Math.max(1, parseInt(document.getElementById("count").value || "1", 10));
+      const size = Math.max(120, parseInt(document.getElementById("size").value || "240", 10));
+      setGridSize(size);
+
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      for (let i = 0; i < n; i++) grid.appendChild(makeTile(i));
+    }
+
+    document.getElementById("gen").addEventListener("click", generate);
+    document.getElementById("regen").addEventListener("click", generate);
+
+    // initial
+    generate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toolbar Design Suite - Workspace Hub</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #f4f5f8;
+      --sidebar-bg: #ffffff;
+      --sidebar-border: #e4e5e7;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-muted: #8e8e93;
+      --accent-color: #0071e3;
+      --accent-hover: #0077ed;
+      --card-bg: #ffffff;
+      --card-border: #e4e5e7;
+      --card-hover-border: #8e8e93;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.08);
+      --radius-sm: 8px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #0d0d0f;
+      --sidebar-bg: #1a1a1e;
+      --sidebar-border: #2c2c2e;
+      --text-primary: #f5f5f7;
+      --text-secondary: #8e8e93;
+      --text-muted: #48484a;
+      --accent-color: #0a84ff;
+      --accent-hover: #2094ff;
+      --card-bg: #1e1e24;
+      --card-border: #2c2c2e;
+      --card-hover-border: #48484a;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+      --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      transition: background-color var(--transition), color var(--transition);
+    }
+
+    .app-layout {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Left Sidebar Workspace Switcher */
+    .sidebar {
+      width: 260px;
+      height: 100%;
+      background-color: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 10;
+      box-shadow: var(--shadow-sm);
+      transition: background-color var(--transition), border-color var(--transition);
+    }
+
+    .sidebar-header {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+
+    .logo-glow {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #ff5e62, #ff9966);
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(255, 94, 98, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .logo-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .nav-list {
+      list-style: none;
+      padding: 20px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all var(--transition);
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2px;
+      transition: transform var(--transition);
+    }
+
+    .nav-item:hover {
+      background-color: rgba(0, 0, 0, 0.03);
+      color: var(--text-primary);
+    }
+
+    [data-theme="dark"] .nav-item:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-item:hover svg {
+      transform: translateX(2px);
+    }
+
+    .nav-item.active {
+      background-color: var(--accent-color);
+      color: #ffffff;
+    }
+
+    .nav-item.active svg {
+      color: #ffffff;
+    }
+
+    .sidebar-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--sidebar-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .theme-toggle-btn {
+      background: none;
+      border: 1px solid var(--sidebar-border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+    }
+
+    .theme-toggle-btn:hover {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+    }
+
+    /* Main Viewport */
+    .main-viewport {
+      flex: 1;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Workspace Header Bar */
+    .workspace-header {
+      height: 56px;
+      width: 100%;
+      background-color: var(--sidebar-bg);
+      border-bottom: 1px solid var(--sidebar-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 5;
+      display: none; /* Only shown when a tool is loaded */
+    }
+
+    .active-tool-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .workspace-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-action {
+      background-color: transparent;
+      border: 1px solid var(--sidebar-border);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition);
+    }
+
+    .btn-action:hover {
+      background-color: var(--bg-color);
+      color: var(--text-primary);
+    }
+
+    .btn-action.accent {
+      background-color: var(--accent-color);
+      border-color: var(--accent-color);
+      color: #ffffff;
+    }
+
+    .btn-action.accent:hover {
+      background-color: var(--accent-hover);
+    }
+
+    /* Embedded Tool Viewports */
+    .tool-frame-container {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background-color: var(--bg-color);
+      display: none;
+    }
+
+    .tool-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background-color: transparent;
+    }
+
+    /* Loading Overlay spinner */
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition);
+      z-index: 3;
+    }
+
+    .loading-spinner.visible {
+      opacity: 1;
+    }
+
+    .spinner-ring {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--sidebar-border);
+      border-top-color: var(--accent-color);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Workspace Home Dashboard */
+    .home-dashboard {
+      flex: 1;
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn var(--transition);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dashboard-hero {
+      text-align: center;
+      max-width: 600px;
+      margin-bottom: 48px;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 28px;
+      width: 100%;
+      max-width: 1000px;
+      padding-bottom: 60px;
+    }
+
+    .tool-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all var(--transition);
+    }
+
+    .tool-card::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 4px;
+      background: var(--accent-gradient, var(--accent-color));
+      opacity: 0;
+      transition: opacity var(--transition);
+    }
+
+    .tool-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--card-hover-border);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .tool-card:hover::before {
+      opacity: 1;
+    }
+
+    .card-icon-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      background: var(--accent-gradient, var(--accent-color));
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card-icon-box svg {
+      width: 24px;
+      height: 24px;
+      stroke-width: 2px;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-color);
+      gap: 6px;
+      transition: gap var(--transition);
+    }
+
+    .tool-card:hover .card-footer {
+      gap: 10px;
+    }
+
+    .card-footer svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Left Switcher Dock -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-glow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        </div>
+        <span class="logo-title">Design Suite</span>
+      </div>
+
+      <!-- Navigation list of links -->
+      <nav style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+        <ul class="nav-list" style="overflow-y: auto;">
+          <li>
+            <a class="nav-item active" id="nav-home" data-tool="home">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="7" height="9" rx="1"/>
+                <rect x="14" y="3" width="7" height="5" rx="1"/>
+                <rect x="14" y="12" width="7" height="9" rx="1"/>
+                <rect x="3" y="16" width="7" height="5" rx="1"/>
+              </svg>
+              <span>Workspaces Home</span>
+            </a>
+          </li>
+          
+          <div class="toolbar-divider"></div>
+
+          <li>
+            <a class="nav-item" id="nav-clock" data-tool="clock">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>Vazir Clock Designer</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-flowchart" data-tool="flowchart">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="6" height="6" rx="1"/>
+                <rect x="15" y="15" width="6" height="6" rx="1"/>
+                <path d="M9 6h6m-6 12h6M6 9v6m12-6v6"/>
+              </svg>
+              <span>Flowchart Builder</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-plotter" data-tool="plotter">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 12h18M6 8v8M12 5v14M18 8v8"/>
+              </svg>
+              <span>Plotter v2</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-slicer" data-tool="slicer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+              <span>Vector Slicer</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-gradient" data-tool="gradient">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/>
+              </svg>
+              <span>Gradient Maker</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-secure" data-tool="secure">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              <span>Security Suite</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-angle" data-tool="angle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 12 12 19 5"></polyline>
+              </svg>
+              <span>Angle Drawer</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-percentbar" data-tool="percentbar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              <span>Percentage Bar</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-puzzle" data-tool="puzzle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M11.75 3a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/>
+                <path d="M3.5 10.25h16.5"/>
+              </svg>
+              <span>Puzzle Designer</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-convert" data-tool="convert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="16 3 21 3 21 8"/>
+                <line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/>
+                <line x1="15" y1="15" x2="21" y2="21"/>
+                <line x1="4" y1="4" x2="9" y2="9"/>
+              </svg>
+              <span>Format Converter</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-colorstudio" data-tool="colorstudio">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                <circle cx="7.5" cy="10.5" r="1.5"/>
+                <circle cx="11.5" cy="7.5" r="1.5"/>
+                <circle cx="16.5" cy="9.5" r="1.5"/>
+              </svg>
+              <span>Color Studio</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-gridcalc" data-tool="gridcalc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+              </svg>
+              <span>Grid Calculator</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-mesh" data-tool="mesh">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span>Mesh Gradient</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-typo" data-tool="typo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="4 7 4 4 20 4 20 7"/>
+                <line x1="9" y1="20" x2="15" y2="20"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+              </svg>
+              <span>Typography</span>
+            </a>
+          </li>
+
+          <li>
+            <a class="nav-item" id="nav-steamcalc" data-tool="steamcalc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <circle cx="7" cy="8" r="2"/>
+                <path d="M15 8h4M15 16h4"/>
+                <circle cx="7" cy="16" r="2"/>
+              </svg>
+              <span>Steam key Arbitrage</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Sidebar bottom footer -->
+      <div class="sidebar-footer">
+        <span style="font-size: 10px; font-family: 'JetBrains Mono'; color: var(--text-muted);">V2.5.0</span>
+        <button class="theme-toggle-btn" id="theme-switcher" title="Toggle Light/Dark Workspace">
+          <!-- Sun Icon -->
+          <svg id="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <!-- Moon Icon -->
+          <svg id="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="display: none;">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Container -->
+    <main class="main-viewport">
+      <!-- Top header (Only when iframe is running) -->
+      <div class="workspace-header" id="header-bar">
+        <span class="active-tool-title" id="active-tool-name">Workspace Portal</span>
+        <div class="workspace-actions">
+          <button class="btn-action" id="btn-back-hub">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+            Back to Hub
+          </button>
+          <button class="btn-action accent" id="btn-launch-tab">
+            <span>Open standalone</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+              <polyline points="15 3 21 3 21 9"/>
+              <line x1="10" y1="14" x2="21" y2="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading overlay indicator -->
+      <div class="loading-spinner" id="frame-spinner">
+        <div class="spinner-ring"></div>
+        <span style="font-size: 11px; font-weight: 500; color: var(--text-secondary);">Loading Workspace...</span>
+      </div>
+
+      <!-- Workspace Home Screen (Launch grid) -->
+      <div class="home-dashboard" id="workspace-home">
+        <div class="dashboard-hero">
+          <h1 class="hero-title">Welcome to Design Suite</h1>
+          <p class="hero-subtitle">Access your premium vector graphic generators, flowchart diagrams, and customizable watches in a unified visual designer workspace.</p>
+        </div>
+
+        <div class="cards-grid">
+          <!-- Card: Clock -->
+          <div class="tool-card" data-tool="clock" style="--accent-gradient: linear-gradient(135deg, #4f46e5, #06b6d4);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Vazir Clock Designer</h2>
+              <p class="card-desc" style="margin-top: 8px;">Design, customize, and export high-fidelity Persian/Arabic, Roman, or English analog clocks. Supports live ticking, timezone offsets, and drop shadows.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Designer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Flowchart -->
+          <div class="tool-card" data-tool="flowchart" style="--accent-gradient: linear-gradient(135deg, #10b981, #059669);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="6" height="6" rx="1"/>
+                <rect x="15" y="15" width="6" height="6" rx="1"/>
+                <path d="M9 6h6m-6 12h6M6 9v6m12-6v6"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Flowchart Builder</h2>
+              <p class="card-desc" style="margin-top: 8px;">Create interactive node flowcharts, diagrams, and logic maps. Connect objects dynamically with auto-routing lines and export high-res vector graphics.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Builder</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Plotter v2 -->
+          <div class="tool-card" data-tool="plotter" style="--accent-gradient: linear-gradient(135deg, #ea580c, #d97706);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 12h18M6 8v8M12 5v14M18 8v8"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Plotter v2 Axis</h2>
+              <p class="card-desc" style="margin-top: 8px;">Design professional math number lines, geometric vector lines, interval pointers, and ruler guides. Features advanced typography settings.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Plotter</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Slicer -->
+          <div class="tool-card" data-tool="slicer" style="--accent-gradient: linear-gradient(135deg, #ec4899, #f43f5e);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Vector Image Slicer</h2>
+              <p class="card-desc" style="margin-top: 8px;">Slice and subdivide SVG vector images and grids. Ideal for creating custom vector tile layouts, grid-alignments, and split sprite assets.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Slicer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Gradient Maker -->
+          <div class="tool-card" data-tool="gradient" style="--accent-gradient: linear-gradient(135deg, #6366f1, #3b82f6);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Gradient Color Maker</h2>
+              <p class="card-desc" style="margin-top: 8px;">Generate advanced multi-stop CSS gradient codes, SVG fills, and color interpolation steps. Features linear, radial, and conic rendering previews.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Maker</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Secure Suite -->
+          <div class="tool-card" data-tool="secure" style="--accent-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Security Suite (Secure)</h2>
+              <p class="card-desc" style="margin-top: 8px;">Create cryptographic SHA-256 seed-based CAPTCHA challenges with line & point noise, and execute reversible Enigma XOR string key encryptions.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Secure Suite</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Angle Drawer -->
+          <div class="tool-card" data-tool="angle" style="--accent-gradient: linear-gradient(135deg, #0d9488, #10b981);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 12 12 19 5"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Angle Drawer Vector</h2>
+              <p class="card-desc" style="margin-top: 8px;">Plot precise geometry angles and arc guides. Features custom line weights, customizable label titles, and a wobbly, sketchy "hand-drawn vibe" simulation.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Angle Drawer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Percentage Bar -->
+          <div class="tool-card" data-tool="percentbar" style="--accent-gradient: linear-gradient(135deg, #16a34a, #84cc16);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Circular Gauge (Percentage Bar)</h2>
+              <p class="card-desc" style="margin-top: 8px;">Produce beautiful radial gauge bars, progress rings, and performance donuts. Supports custom spacing, typography size overrides, and Persian/Arabic digits.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Gauge Designer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Puzzle Designer -->
+          <div class="tool-card" data-tool="puzzle" style="--accent-gradient: linear-gradient(135deg, #eab308, #f97316);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M11.75 3a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/>
+                <path d="M3.5 10.25h16.5"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Jigsaw Puzzle Designer</h2>
+              <p class="card-desc" style="margin-top: 8px;">Generate vector cutting outlines for interlocking puzzle sheets. Customize row & column count, tab radius ratios, page margins, and download as SVG/PNG.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Puzzle Designer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Format Converter -->
+          <div class="tool-card" data-tool="convert" style="--accent-gradient: linear-gradient(135deg, #06b6d4, #0891b2);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="16 3 21 3 21 8"/>
+                <line x1="4" y1="20" x2="21" y2="3"/>
+                <polyline points="21 16 21 21 16 21"/>
+                <line x1="15" y1="15" x2="21" y2="21"/>
+                <line x1="4" y1="4" x2="9" y2="9"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Format Converter</h2>
+              <p class="card-desc" style="margin-top: 8px;">Convert PNG/JPG to WebP/ICO, extract PDF pages to PNG, translate numbers (Farsi/English), and parse Word lists into Excel-compatible tables.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Converter</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Color Studio -->
+          <div class="tool-card" data-tool="colorstudio" style="--accent-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                <circle cx="7.5" cy="10.5" r="1.5"/>
+                <circle cx="11.5" cy="7.5" r="1.5"/>
+                <circle cx="16.5" cy="9.5" r="1.5"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Color Studio Pro</h2>
+              <p class="card-desc" style="margin-top: 8px;">Plan UI color palettes. Generate Analogous/Triadic harmonies, check WCAG 2.1 contrast ratios with real-time pass/fail accessibility cards, and export CSS/SVG variables.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Color Studio</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Grid Calculator -->
+          <div class="tool-card" data-tool="gridcalc" style="--accent-gradient: linear-gradient(135deg, #10b981, #059669);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Grid & Spacing Calculator</h2>
+              <p class="card-desc" style="margin-top: 8px;">Design column-grid layouts, calculate aspect ratios (16:9, 4:3, golden ratio) with responsive scaling boxes, and generate Tailwind-compatible spacing tables.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Grid Calculator</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Mesh Gradient -->
+          <div class="tool-card" data-tool="mesh" style="--accent-gradient: linear-gradient(135deg, #f43f5e, #fb7185);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Liquid Mesh Gradient</h2>
+              <p class="card-desc" style="margin-top: 8px;">Build beautiful organic fluid gradients. Drag 4 color anchors, customize radii, add overlay noise grain, toggle float animations, and export as 4K wallpapers.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Mesh Builder</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Typography Playground -->
+          <div class="tool-card" data-tool="typo" style="--accent-gradient: linear-gradient(135deg, #6366f1, #a855f7);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <polyline points="4 7 4 4 20 4 20 7"/>
+                <line x1="9" y1="20" x2="15" y2="20"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Typography Playground</h2>
+              <p class="card-desc" style="margin-top: 8px;">Design clean font pairings and type scales. Preview editable text paragraphs with 8px baseline grids, compute modular sizing multipliers, and copy CSS rules.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Typo Playground</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Steam Calculator -->
+          <div class="tool-card" data-tool="steamcalc" style="--accent-gradient: linear-gradient(135deg, #1b2838, #2a475e);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <line x1="12" y1="4" x2="12" y2="20"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <circle cx="7" cy="8" r="2"/>
+                <path d="M15 8h4M15 16h4"/>
+                <circle cx="7" cy="16" r="2"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Steam TF2 Key Arbitrage</h2>
+              <p class="card-desc" style="margin-top: 8px;">Maximize savings on Steam purchases! Input external TF2 key buying prices and Steam listing rates to calculate exact requirements, rounded Valve transaction fees, and net wallet credit.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Calculator</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Iframe viewport wrapper -->
+      <div class="tool-frame-container" id="tool-frame-container">
+        <iframe class="tool-iframe" id="tool-iframe" allow="local-fonts"></iframe>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Elements
+      const navItems = document.querySelectorAll('.nav-item');
+      const toolCards = document.querySelectorAll('.tool-card');
+      
+      const workspaceHome = document.getElementById('workspace-home');
+      const toolFrameContainer = document.getElementById('tool-frame-container');
+      const toolIframe = document.getElementById('tool-iframe');
+      const headerBar = document.getElementById('header-bar');
+      const activeToolName = document.getElementById('active-tool-name');
+      const frameSpinner = document.getElementById('frame-spinner');
+      
+      const btnBackHub = document.getElementById('btn-back-hub');
+      const btnLaunchTab = document.getElementById('btn-launch-tab');
+      
+      const themeSwitcher = document.getElementById('theme-switcher');
+      const themeSun = document.getElementById('theme-sun');
+      const themeMoon = document.getElementById('theme-moon');
+
+      // Paths mapping
+      const toolPaths = {
+        'clock': 'apps/Clock/index.html',
+        'flowchart': 'apps/Flowchart/index.html',
+        'plotter': 'apps/Plotter v2/index.html',
+        'slicer': 'apps/Slicer/index.html',
+        'gradient': 'apps/Gradient Maker/index.html',
+        'secure': 'apps/Secure/index.html',
+        'angle': 'apps/Angle Drawer/index.html',
+        'percentbar': 'apps/Percentage Bar/index.html',
+        'puzzle': 'apps/Puzzle/index.html',
+        'convert': 'apps/Convert/index.html',
+        'colorstudio': 'apps/Color Studio/index.html',
+        'gridcalc': 'apps/Grid/index.html',
+        'mesh': 'apps/Mesh/index.html',
+        'typo': 'apps/Typography/index.html',
+        'steamcalc': 'apps/Steam Calculator/index.html'
+      };
+
+      const toolDisplayNames = {
+        'clock': 'Vazir Clock Designer Workspace',
+        'flowchart': 'Flowchart Builder Workspace',
+        'plotter': 'Plotter v2 - Premium Number Line Workspace',
+        'slicer': 'Vector Image Slicer Workspace',
+        'gradient': 'Gradient Maker Workspace',
+        'secure': 'Security Tool Suite (CAPTCHA & XOR Cipher)',
+        'angle': 'Angle Designer Workspace',
+        'percentbar': 'Circular Gauge Designer Workspace',
+        'puzzle': 'Jigsaw Puzzle Designer Workspace',
+        'convert': 'Format Converter Suite',
+        'colorstudio': 'Color Studio - Palette & Contrast Workspace',
+        'gridcalc': 'Grid & Aspect Spacing Workspace',
+        'mesh': 'Liquid Mesh Gradient Builder',
+        'typo': 'Typography Pairer & Playground',
+        'steamcalc': 'Steam key Arbitrage Calculator'
+      };
+
+      let activeToolKey = 'home';
+
+      // Load a specific tool
+      function switchTool(toolKey) {
+        activeToolKey = toolKey;
+        
+        // Update sidebar links
+        navItems.forEach(link => {
+          if (link.getAttribute('data-tool') === toolKey) {
+            link.classList.add('active');
+          } else {
+            link.classList.remove('active');
+          }
+        });
+
+        if (toolKey === 'home') {
+          // Show home, hide frame
+          headerBar.style.display = 'none';
+          toolFrameContainer.style.display = 'none';
+          workspaceHome.style.display = 'flex';
+          toolIframe.src = 'about:blank';
+        } else {
+          // Load in iframe
+          workspaceHome.style.display = 'none';
+          headerBar.style.display = 'flex';
+          toolFrameContainer.style.display = 'block';
+          
+          activeToolName.textContent = toolDisplayNames[toolKey];
+          
+          // Display spinner
+          frameSpinner.classList.add('visible');
+          
+          // Set frame source
+          toolIframe.src = toolPaths[toolKey];
+        }
+      }
+
+      // Hide spinner once iframe is fully loaded
+      toolIframe.addEventListener('load', () => {
+        frameSpinner.classList.remove('visible');
+      });
+
+      // Click event listeners
+      navItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          const toolKey = item.getAttribute('data-tool');
+          switchTool(toolKey);
+        });
+      });
+
+      toolCards.forEach(card => {
+        card.addEventListener('click', () => {
+          const toolKey = card.getAttribute('data-tool');
+          switchTool(toolKey);
+        });
+      });
+
+      btnBackHub.addEventListener('click', () => {
+        switchTool('home');
+      });
+
+      btnLaunchTab.addEventListener('click', () => {
+        if (activeToolKey !== 'home' && toolPaths[activeToolKey]) {
+          window.open(toolPaths[activeToolKey], '_blank');
+        }
+      });
+
+      // UI theme manager (synchronizes dashboard light/dark variables)
+      function setUITheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('hub_ui_theme', theme);
+        
+        if (theme === 'dark') {
+          themeSun.style.display = 'none';
+          themeMoon.style.display = 'block';
+        } else {
+          themeSun.style.display = 'block';
+          themeMoon.style.display = 'none';
+        }
+        
+        // Propagate theme changes inside loaded iframe if the tool supports data-theme attributes
+        try {
+          if (toolIframe.contentWindow && toolIframe.contentWindow.document) {
+            toolIframe.contentWindow.document.documentElement.setAttribute('data-theme', theme);
+            // Optionally dispatch event inside iframe
+            const event = new CustomEvent('themeChanged', { detail: theme });
+            toolIframe.contentWindow.dispatchEvent(event);
+          }
+        } catch (e) {
+          // Cross-origin or loading exceptions (should be same-origin in local files, but safe wrapper)
+        }
+      }
+
+      themeSwitcher.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setUITheme(nextTheme);
+      });
+
+      // Initialize Theme
+      const savedTheme = localStorage.getItem('hub_ui_theme') || 'light';
+      setUITheme(savedTheme);
+
+      // Auto check query params (e.g. ?tool=clock) to launch a tool directly
+      const urlParams = new URLSearchParams(window.location.search);
+      const toolParam = urlParams.get('tool');
+      if (toolParam && toolPaths[toolParam]) {
+        switchTool(toolParam);
+      }
+    });
+  </script>
+</body>
+</html>

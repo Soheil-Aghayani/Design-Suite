@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/tool.css">
+    <style>
+        #preview-wrap { width: 100%; display: flex; justify-content: center; padding: 100px 0; }
+        #box { width: 300px; height: 300px; background: white; border-radius: 20px; transition: box-shadow 0.1s; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; font-family: monospace; font-size: 0.9rem; border: 1px solid var(--border-color); }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <div class="control-group">
+        <label for="x">Offset X</label>
+        <input type="range" id="x" min="-100" max="100" value="15">
+    </div>
+    <div class="control-group">
+        <label for="y">Offset Y</label>
+        <input type="range" id="y" min="-100" max="100" value="15">
+    </div>
+    <div class="control-group">
+        <label for="blur">Blur Radius</label>
+        <input type="range" id="blur" min="0" max="100" value="30">
+    </div>
+    <div class="control-group">
+        <label for="spread">Spread</label>
+        <input type="range" id="spread" min="-50" max="50" value="0">
+    </div>
+    <div class="control-group">
+        <label>Box Color</label>
+        <div class="row">
+            <input type="color" id="box-col" value="#ffffff">
+            <input type="text" id="box-hex" value="#FFFFFF" style="width: 100px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label>Shadow Color</label>
+        <div class="row">
+            <input type="color" id="sh-col" value="#000000">
+            <input type="text" id="sh-hex" value="#000000" style="width: 100px; text-transform: uppercase; font-family: monospace;">
+        </div>
+    </div>
+    <div class="control-group">
+        <label for="alpha">Opacity (%)</label>
+        <input type="range" id="alpha" min="0" max="100" value="25">
+    </div>
+    <div class="control-group">
+        <div class="row">
+            <input type="checkbox" id="inset">
+            <label for="inset">Inset Shadow</label>
+        </div>
+    </div>
+</div>
+
+<div id="preview-wrap">
+    <div id="box">box-shadow: ...</div>
+</div>
+
+<script>
+    const box = document.getElementById('box');
+    const el = id => document.getElementById(id);
+    const ui = ['x','y','blur','spread','box-col','box-hex','sh-col','sh-hex','alpha','inset'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+
+    // Hex Sync
+    ['box','sh'].forEach(p => {
+        ui[p+'-col'].oninput = () => { ui[p+'-hex'].value = ui[p+'-col'].value.toUpperCase(); update(); save(); };
+        ui[p+'-hex'].oninput = () => { if(/^#[0-9A-F]{6}$/i.test(ui[p+'-hex'].value)) { ui[p+'-col'].value = ui[p+'-hex'].value; update(); save(); } };
+    });
+
+    function update() {
+        const x = ui.x.value, y = ui.y.value, b = ui.blur.value, s = ui.spread.value, a = ui.alpha.value/100;
+        const hex = ui['sh-col'].value;
+        const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), bl = parseInt(hex.slice(5,7),16);
+        const shadow = `${ui.inset.checked?'inset ':''}${x}px ${y}px ${b}px ${s}px rgba(${r},${g},${bl},${a})`;
+        
+        box.style.backgroundColor = ui['box-col'].value;
+        box.style.boxShadow = shadow;
+        box.innerText = `box-shadow: ${shadow};`;
+    }
+
+    function save() { const data = Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {}); localStorage.setItem('suite_tool_shadow', JSON.stringify(data)); }
+    function load() { const raw = localStorage.getItem('suite_tool_shadow'); if(raw){ const d=JSON.parse(raw); Object.keys(d).forEach(k=>{ if(ui[k]){ if(ui[k].type==='checkbox') ui[k].checked=d[k]; else ui[k].value=d[k]; } }); } update(); }
+
+    Object.values(ui).forEach(el => { if(el.oninput) return; el.oninput = () => { update(); save(); } });
+    window.onload = load;
+</script>
+</body>
+</html>

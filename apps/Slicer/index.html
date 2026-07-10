@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shape Slicer Workspace</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Shape Slicer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="9" y1="3" x2="9" y2="21"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Zoom Controls -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="zoom-in-btn" data-tooltip="Zoom In">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <span class="zoom-display" id="zoom-display-text">100%</span>
+        <button class="tool-btn" id="zoom-out-btn" data-tooltip="Zoom Out">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button class="tool-btn" id="zoom-reset-btn" data-tooltip="Reset Zoom & Pan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h6v6"/>
+            <path d="M9 21H3v-6"/>
+            <path d="M21 3l-7 7"/>
+            <path d="M3 21l7-7"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Actions -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-reset" data-tooltip="Reset to Defaults">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.5 2v6h-6"/>
+            <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="toolbar-divider"></div>
+
+      <!-- Quick Export Section -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-export" data-tooltip="Export PNG">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Canvas Viewport (Flowchart Style) -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+      
+      <div class="canvas-viewport">
+        <!-- Interactive Preview Container -->
+        <div id="preview-container" class="show-checkerboard">
+          <!-- The live Sliced shapes will be drawn inside this canvas -->
+          <canvas id="slicer-canvas" width="600" height="600"></canvas>
+        </div>
+      </div>
+
+      <!-- Floating HUD status bar -->
+      <div class="hud-status-bar">
+        <span class="hud-item" id="hud-slices-val">Slices: 10</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-shape-val">Shape: Circle</span>
+        <span class="hud-divider">|</span>
+        <span class="hud-item" id="hud-zoom-val">Zoom: 100%</span>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (Geometry, Style, Export) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-geometry" data-tab="tab-geometry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+          Geometry
+        </button>
+        <button class="tab-btn" id="tab-btn-style" data-tab="tab-style">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          Style
+        </button>
+        <button class="tab-btn" id="tab-btn-export" data-tab="tab-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export
+        </button>
+      </div>
+
+      <!-- Tab Content: Geometry -->
+      <div class="sidebar-tab-content active" id="tab-geometry">
+        <div class="input-group">
+          <div class="input-section-title">Slice Count Settings</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="slice-count">Slice Count</label>
+              <span id="slice-count-lbl">10</span>
+            </div>
+            <input type="range" id="slice-count" min="2" max="100" value="10">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="base-shape">Base Shape Type</label>
+            <select id="base-shape" class="text-input">
+              <option value="circle">Circle / Donut</option>
+              <option value="rectangle">Rectangle</option>
+              <option value="square">Square</option>
+              <option value="triangle">Triangle</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Explosion & Rotation</div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="shape-rotation">Slice Rotation Angle</label>
+              <span id="shape-rotation-lbl">0°</span>
+            </div>
+            <input type="range" id="shape-rotation" min="0" max="360" value="0">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="inner-radius">Inner Cutout Radius</label>
+              <span id="inner-radius-lbl">0%</span>
+            </div>
+            <input type="range" id="inner-radius" min="0" max="90" value="0">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="explosion-offset">Explosion Offset</label>
+              <span id="explosion-offset-lbl">0px</span>
+            </div>
+            <input type="range" id="explosion-offset" min="0" max="150" value="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Style -->
+      <div class="sidebar-tab-content" id="tab-style">
+        <div class="input-group">
+          <div class="input-section-title">Display Toggles</div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="colorize">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Vibrant Colors (Fill)</span>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="show-labels" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Show degree measurements</span>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="show-checkerboard" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Preview checkerboard layer</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Color Palette Actions</div>
+          
+          <button class="action-btn secondary" id="btn-random-colors">
+            Randomize Slice Colors
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Export -->
+      <div class="sidebar-tab-content" id="tab-export">
+        <div class="input-group">
+          <div class="input-section-title">Image Export</div>
+
+          <button class="action-btn" id="btn-export-png">Export Transparent PNG</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

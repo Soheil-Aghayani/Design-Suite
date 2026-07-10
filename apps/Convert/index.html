@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Format Converter Suite Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Load PDF.js for PDF to Image page extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Format Converter">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="16 3 21 3 21 8"/>
+          <line x1="4" y1="20" x2="21" y2="3"/>
+          <polyline points="21 16 21 21 16 21"/>
+          <line x1="15" y1="15" x2="21" y2="21"/>
+          <line x1="4" y1="4" x2="9" y2="9"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Quick Info / Status Icons -->
+      <div class="toolbar-section">
+        <div class="status-indicator active" title="System Ready">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+
+      <!-- Tab Viewports -->
+      <div class="workspace-viewport">
+        <!-- 1. IMAGE & WEBP VIEWPORT -->
+        <div class="converter-panel active" id="view-image">
+          <div class="drop-zone" id="img-drop-zone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <p class="drop-title">Drag & Drop Single or Multiple Images here</p>
+            <p class="drop-subtitle">Supports PNG, JPG, SVG, WebP, BMP</p>
+            <button class="action-btn secondary" onclick="document.getElementById('file-img').click()">Browse Files</button>
+            <input type="file" id="file-img" accept="image/*" multiple style="display: none;">
+          </div>
+
+          <!-- Preview & Image Conversion Settings -->
+          <div class="preview-panel" id="img-preview-panel" style="display: none;">
+            <!-- Tab contents switcher inside preview panel for Batch list vs Single view -->
+            <div class="panel-toggle-row">
+              <button class="panel-toggle-btn active" id="btn-toggle-single">Single Preview</button>
+              <button class="panel-toggle-btn" id="btn-toggle-batch" style="display: none;">Batch Queue (<span id="batch-queue-count">0</span>)</button>
+            </div>
+
+            <!-- Single Preview Mode -->
+            <div id="single-preview-mode" class="mode-view-container">
+              <div class="preview-box">
+                <img id="img-preview-el" alt="Source Preview">
+              </div>
+              <div class="preview-details">
+                <span id="img-name-lbl">file_name.png</span>
+                <span id="img-size-lbl">120 KB</span>
+              </div>
+              
+              <!-- Automatic Color Palette Extractor -->
+              <div class="palette-extractor" id="img-palette-extractor">
+                <div class="palette-title">Extracted Color Palette</div>
+                <div class="palette-colors" id="palette-colors-list">
+                  <!-- Hex badges pop up here -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Batch Queue List Mode -->
+            <div id="batch-preview-mode" class="mode-view-container" style="display: none;">
+              <div class="batch-queue-container" id="batch-queue-list">
+                <!-- Dynamically generated list items of uploaded files -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. PDF TO IMAGE VIEWPORT -->
+        <div class="converter-panel" id="view-pdf">
+          <div class="drop-zone" id="pdf-drop-zone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            <p class="drop-title">Drag & Drop PDF document here</p>
+            <p class="drop-subtitle">Extract high-fidelity pages to PNG images</p>
+            <button class="action-btn secondary" onclick="document.getElementById('file-pdf').click()">Browse Files</button>
+            <input type="file" id="file-pdf" accept="application/pdf" style="display: none;">
+          </div>
+
+          <!-- PDF Pages Grid View -->
+          <div class="pdf-gallery-panel" id="pdf-preview-panel" style="display: none;">
+            <div class="pdf-info-row">
+              <span id="pdf-name-lbl">document.pdf</span>
+              <span id="pdf-pages-lbl">Total: 0 Pages</span>
+            </div>
+            <div class="pdf-pages-grid" id="pdf-pages-grid">
+              <!-- Dynamically rendered page canvases -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. TEXT & NUMBERS PARSER VIEWPORT -->
+        <div class="converter-panel" id="view-text">
+          <div class="text-converter-layout">
+            <!-- Left Input Text Area -->
+            <div class="text-area-box">
+              <div class="text-box-header">Input Data / List Text</div>
+              <textarea id="text-input-field" placeholder="Paste your digits or lists here...&#10;Example for Digits: ۱۲۳۴۵۶&#10;Example for Word2Excel Extraction:&#10;1- Ali - Manager&#10;2- Sara - Developer"></textarea>
+            </div>
+
+            <!-- Arrow Indicator -->
+            <div class="text-middle-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+
+            <!-- Right Output / Extracted Table Viewport -->
+            <div class="text-area-box">
+              <div class="text-box-header" id="text-output-header">Parsed Result</div>
+              
+              <!-- Plain text converted output box -->
+              <textarea id="text-output-field" readonly placeholder="Output will appear here..." style="display: block;"></textarea>
+              
+              <!-- Excel Extracted Rows table preview -->
+              <div class="table-preview-container" id="excel-table-container" style="display: none;">
+                <table class="excel-table" id="excel-preview-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Position / Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. EXIF CLEANER VIEWPORT -->
+        <div class="converter-panel" id="view-exif">
+          <div class="drop-zone" id="exif-drop-zone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <p class="drop-title">Drag & Drop Image to Strip EXIF Metadata</p>
+            <p class="drop-subtitle">Removes GPS coordinates, camera specs, and date history from PNG/JPG</p>
+            <button class="action-btn secondary" onclick="document.getElementById('file-exif').click()">Browse Files</button>
+            <input type="file" id="file-exif" accept="image/jpeg,image/png" style="display: none;">
+          </div>
+
+          <!-- EXIF Analyzer Diagnostic Panel -->
+          <div class="pdf-gallery-panel" id="exif-preview-panel" style="display: none; padding: 24px; gap: 20px; height: 100%;">
+            <div class="pdf-info-row" style="padding: 0 0 12px 0;">
+              <span id="exif-name-lbl">image.jpg</span>
+              <span id="exif-size-lbl">0 KB</span>
+            </div>
+            <div class="text-converter-layout" style="flex: 1; min-height: 0;">
+              <div class="preview-box" style="flex: 1; height: 100%;">
+                <img id="exif-preview-el" alt="EXIF Source Preview">
+              </div>
+              <div class="text-area-box" style="flex: 1; height: 100%;">
+                <div class="text-box-header">Metadata Analysis Report</div>
+                <div class="exif-log-container" id="exif-log-content" style="padding: 16px; font-family: var(--font-mono); font-size: 11px; overflow-y: auto; height: 100%; background-color: var(--accent-bg-subtle); color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap;">
+                  <!-- Analysis logs pop here -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. SVG OPTIMIZER VIEWPORT -->
+        <div class="converter-panel" id="view-svgopt">
+          <div class="drop-zone" id="svgopt-drop-zone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48">
+              <path d="M4 14h6v6H4zm10 0h6v6h-6zM4 4h6v6H4zm10 0h6v6h-6z"/>
+            </svg>
+            <p class="drop-title">Drag & Drop SVG vector file here</p>
+            <p class="drop-subtitle">Minifies vector paths, rounds coordinate precision, and removes bloated tags</p>
+            <button class="action-btn secondary" onclick="document.getElementById('file-svgopt').click()">Browse Files</button>
+            <input type="file" id="file-svgopt" accept="image/svg+xml" style="display: none;">
+          </div>
+
+          <!-- SVG Minifier Preview / Code Split Layout -->
+          <div class="pdf-gallery-panel" id="svgopt-preview-panel" style="display: none; padding: 24px; gap: 20px; height: 100%;">
+            <div class="pdf-info-row" style="padding: 0 0 12px 0;">
+              <span id="svgopt-name-lbl">vector.svg</span>
+              <span id="svgopt-stats-lbl">Original: 0 KB | Optimized: 0 KB (-0%)</span>
+            </div>
+            <div class="text-converter-layout" style="flex: 1; min-height: 0;">
+              <!-- Visual rendering preview box -->
+              <div class="preview-box" style="flex: 1; height: 100%;">
+                <div id="svgopt-rendered-container" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; padding: 12px;"></div>
+              </div>
+              
+              <!-- Code editor output box -->
+              <div class="text-area-box" style="flex: 1; height: 100%;">
+                <div class="text-box-header">Optimized Markup Code</div>
+                <textarea id="svgopt-code-field" readonly style="font-family: var(--font-mono); font-size: 11px; line-height: 1.5; padding: 16px; background-color: var(--accent-bg-subtle); color: var(--text-secondary);"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (Image Converter, PDF Pages, Text & Digits) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-image" data-tab="view-image">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          Image
+        </button>
+        <button class="tab-btn" id="tab-btn-pdf" data-tab="view-pdf">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          PDF Extract
+        </button>
+        <button class="tab-btn" id="tab-btn-text" data-tab="view-text">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <line x1="17" y1="10" x2="3" y2="10"/>
+            <line x1="21" y1="6" x2="3" y2="6"/>
+            <line x1="21" y1="14" x2="3" y2="14"/>
+            <line x1="17" y1="18" x2="3" y2="18"/>
+          </svg>
+          Text & Data
+        </button>
+        <button class="tab-btn" id="tab-btn-exif" data-tab="view-exif">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          EXIF Clean
+        </button>
+        <button class="tab-btn" id="tab-btn-svgopt" data-tab="view-svgopt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M4 14h6v6H4zm10 0h6v6h-6zM4 4h6v6H4zm10 0h6v6h-6z"/>
+          </svg>
+          SVG Optimize
+        </button>
+      </div>
+
+      <!-- Tab Content: Image Options -->
+      <div class="sidebar-tab-content active" id="panel-image-settings">
+        <div class="input-group">
+          <div class="input-section-title">Format Options</div>
+          
+          <div class="input-field-wrapper">
+            <label for="img-output-format">Output Format</label>
+            <select id="img-output-format" class="text-input">
+              <option value="webp">WebP Image (.webp)</option>
+              <option value="png">PNG Image (.png)</option>
+              <option value="jpeg">JPEG Image (.jpg)</option>
+              <option value="ico">Windows Icon (.ico)</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper" id="img-quality-wrapper">
+            <div class="range-labels">
+              <label for="img-quality">Compression Quality</label>
+              <span id="img-quality-lbl">85%</span>
+            </div>
+            <input type="range" id="img-quality" min="10" max="100" value="85">
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Image Adjustments</div>
+
+          <div class="adjustments-row">
+            <button class="adjust-btn" id="btn-rotate-l" title="Rotate Left 90°">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M21.5 2v6h-6"/>
+                <path d="M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              Rotate L
+            </button>
+            <button class="adjust-btn" id="btn-rotate-r" title="Rotate Right 90°">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M2.5 2v6h6"/>
+                <path d="M2.66 15.57a10 10 0 1 0 .57-8.38l-5.67-5.67"/>
+              </svg>
+              Rotate R
+            </button>
+          </div>
+
+          <div class="adjustments-row">
+            <button class="adjust-btn" id="btn-flip-h" title="Flip Horizontal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M12 2v20M2 12h20M5 7l-3 5 3 5M19 7l3 5-3 5"/>
+              </svg>
+              Flip H
+            </button>
+            <button class="adjust-btn" id="btn-flip-v" title="Flip Vertical">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <path d="M12 2v20M2 12h20M7 5l5-3 5 3M7 19l5 3 5-3"/>
+              </svg>
+              Flip V
+            </button>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="img-grayscale">
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Apply Grayscale Filter</span>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Resize Boundaries</div>
+
+          <div class="input-field-wrapper">
+            <label for="img-scale-mode">Resize Preset</label>
+            <select id="img-scale-mode" class="text-input">
+              <option value="original">Original Size</option>
+              <option value="256">Icon Box (256 × 256)</option>
+              <option value="128">Mini Icon (128 × 128)</option>
+              <option value="64">Tiny Icon (64 × 64)</option>
+              <option value="custom">Custom Dimensions</option>
+            </select>
+          </div>
+
+          <div class="custom-dims-row" id="custom-dims-row" style="display: none; gap: 8px;">
+            <div class="input-field-wrapper" style="flex: 1;">
+              <label for="img-custom-w">Width (px)</label>
+              <input type="number" id="img-custom-w" class="text-input" value="800">
+            </div>
+            <div class="input-field-wrapper" style="flex: 1;">
+              <label for="img-custom-h">Height (px)</label>
+              <input type="number" id="img-custom-h" class="text-input" value="600">
+            </div>
+          </div>
+        </div>
+
+        <button class="action-btn" id="btn-convert-image" style="margin-top: 10px;">Convert & Save File</button>
+        <button class="action-btn secondary" id="btn-clear-images" style="margin-top: 5px; display: none;">Clear Queue</button>
+      </div>
+
+      <!-- Tab Content: PDF Settings -->
+      <div class="sidebar-tab-content" id="panel-pdf-settings">
+        <div class="input-group">
+          <div class="input-section-title">Rendering Quality</div>
+          
+          <div class="input-field-wrapper">
+            <label for="pdf-scale">Resolution Density (Scale)</label>
+            <select id="pdf-scale" class="text-input">
+              <option value="1.0">Standard Screen (1x)</option>
+              <option value="1.5">Retina Screen (1.5x)</option>
+              <option value="2.0" selected>Print Resolution (2x)</option>
+              <option value="3.0">Ultra Density (3x)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Actions</div>
+          <button class="action-btn" id="btn-pdf-download-all" style="margin-top: 10px;">Export All Pages as PNG</button>
+          <button class="action-btn secondary" id="btn-clear-pdf" style="margin-top: 5px; display: none;">Close Document</button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Text & Digits -->
+      <div class="sidebar-tab-content" id="panel-text-settings">
+        <div class="input-group">
+          <div class="input-section-title">Conversion Mode</div>
+          
+          <div class="input-field-wrapper">
+            <label for="text-convert-mode">Operation Type</label>
+            <select id="text-convert-mode" class="text-input">
+              <option value="fa2en">Persian/Arabic ➔ English Digits</option>
+              <option value="en2fa">English ➔ Persian Digits</option>
+              <option value="word2excel">Word to Excel List Extractor</option>
+              <option value="jsonbeautify">JSON Formatter / Beautifier</option>
+              <option value="uppercase">Uppercase Text</option>
+              <option value="lowercase">Lowercase Text</option>
+              <option value="base64encode">Base64 Encode</option>
+              <option value="base64decode">Base64 Decode</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Export Options</div>
+          <button class="action-btn" id="btn-text-export">Convert & Download Output</button>
+          <button class="action-btn secondary" id="btn-text-copy" style="margin-top: 5px;">Copy Result to Clipboard</button>
+        </div>
+      </div>
+
+      <!-- Tab Content: EXIF Cleaner Settings -->
+      <div class="sidebar-tab-content" id="panel-exif-settings">
+        <div class="input-group">
+          <div class="input-section-title">Privacy Protection</div>
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="strip-all-metadata" checked disabled>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Strip EXIF, XMP, & GPS</span>
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-top: 10px;">
+          <button class="action-btn" id="btn-strip-exif">Download Clean Image</button>
+          <button class="action-btn secondary" id="btn-clear-exif" style="margin-top: 5px;">Close Image</button>
+        </div>
+      </div>
+
+      <!-- Tab Content: SVG Optimizer Settings -->
+      <div class="sidebar-tab-content" id="panel-svgopt-settings">
+        <div class="input-group">
+          <div class="input-section-title">Minification Settings</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="svgopt-precision">Decimal Precision</label>
+              <span id="svgopt-precision-lbl">2</span>
+            </div>
+            <input type="range" id="svgopt-precision" min="0" max="4" value="2">
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="svgopt-remove-comments" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Remove XML Comments</span>
+          </div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="svgopt-remove-metadata" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Strip Metadata & Editor Tags</span>
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-top: 10px;">
+          <button class="action-btn" id="btn-save-svgopt">Save Optimized SVG</button>
+          <button class="action-btn secondary" id="btn-copy-svgopt">Copy Code</button>
+          <button class="action-btn secondary" id="btn-clear-svgopt" style="margin-top: 5px;">Close File</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

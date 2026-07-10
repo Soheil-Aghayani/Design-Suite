@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 200" width="100%" height="100%" style="background-color: #ffffff;">
+  <style>
+    .line {
+      stroke: #000000;
+      stroke-width: 3;
+      stroke-linecap: butt;
+    }
+    .tick {
+      stroke: #000000;
+      stroke-width: 2.5;
+      stroke-linecap: butt;
+    }
+    .label {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 24px;
+      font-weight: 500;
+      fill: #000000;
+      text-anchor: middle;
+      dominant-baseline: hanging;
+    }
+  </style>
+  
+  <!-- Horizontal Number Line -->
+  <line x1="50" y1="100" x2="945" y2="100" class="line" />
+  
+  <!-- Arrowhead at the right end -->
+  <polygon points="943,90 965,100 943,110" fill="#000000" />
+  
+  <!-- Major Ticks and Labels -->
+  <!-- Tick at 100 -->
+  <line x1="100" y1="85" x2="100" y2="115" class="tick" />
+  <text x="100" y="125" class="label">100</text>
+  
+  <!-- Tick at 200 -->
+  <line x1="200" y1="85" x2="200" y2="115" class="tick" />
+  <text x="200" y="125" class="label">200</text>
+  
+  <!-- Tick at 300 -->
+  <line x1="300" y1="85" x2="300" y2="115" class="tick" />
+  <text x="300" y="125" class="label">300</text>
+  
+  <!-- Tick at 400 -->
+  <line x1="400" y1="85" x2="400" y2="115" class="tick" />
+  <text x="400" y="125" class="label">400</text>
+  
+  <!-- Tick at 500 -->
+  <line x1="500" y1="85" x2="500" y2="115" class="tick" />
+  <text x="500" y="125" class="label">500</text>
+  
+  <!-- Tick at 600 -->
+  <line x1="600" y1="85" x2="600" y2="115" class="tick" />
+  <text x="600" y="125" class="label">600</text>
+  
+  <!-- Tick at 700 -->
+  <line x1="700" y1="85" x2="700" y2="115" class="tick" />
+  <text x="700" y="125" class="label">700</text>
+  
+  <!-- Tick at 800 -->
+  <line x1="800" y1="85" x2="800" y2="115" class="tick" />
+  <text x="800" y="125" class="label">800</text>
+  
+  <!-- Tick at 900 -->
+  <line x1="900" y1="85" x2="900" y2="115" class="tick" />
+  <text x="900" y="125" class="label">900</text>
+</svg>

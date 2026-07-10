@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Studio - Palette Harmony & WCAG Contrast</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Color Studio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+          <circle cx="7.5" cy="10.5" r="1.5"/>
+          <circle cx="11.5" cy="7.5" r="1.5"/>
+          <circle cx="16.5" cy="9.5" r="1.5"/>
+          <circle cx="15.5" cy="14.5" r="1.5"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Quick Swatch Copies -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-css" data-tooltip="Copy Palette CSS">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/>
+            <polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </button>
+        <button class="tool-btn" id="btn-quick-json" data-tooltip="Copy Palette JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Viewport -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+
+      <!-- Tab Viewports -->
+      <div class="workspace-viewport">
+        <!-- 1. COLOR HARMONY GRID -->
+        <div class="workspace-panel active" id="view-harmony">
+          <div class="harmony-display-card">
+            <div class="harmony-header-row">
+              <span class="harmony-mode-title" id="harmony-mode-title-display">Analogous Harmony</span>
+              <button class="action-btn secondary" id="btn-lock-palette" style="width: auto; padding: 6px 12px; font-size: 10px;">Lock Palette</button>
+            </div>
+            
+            <!-- Large Swatches Grid -->
+            <div class="swatches-row" id="harmony-swatches-grid">
+              <!-- Swatches load here -->
+            </div>
+
+            <!-- Tints & Shades slider list -->
+            <div class="shades-section">
+              <div class="section-subtitle">Tints & Shades Variation</div>
+              <div class="shades-row" id="shades-row-list">
+                <!-- Variations load here -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. CONTRAST CHECKER CARDS -->
+        <div class="workspace-panel" id="view-contrast">
+          <div class="contrast-layout">
+            <!-- Left Mockup Preview Card -->
+            <div class="mockup-preview-card" id="contrast-preview-card">
+              <div class="mockup-header">
+                <div class="mockup-dots"><span></span><span></span><span></span></div>
+                <span class="mockup-title">Accessibility Preview</span>
+              </div>
+              <div class="mockup-body">
+                <h1 id="mockup-heading">Header Text Preview</h1>
+                <p id="mockup-paragraph">This is a real-time compliance test for color contrast. Ensure your text conforms to WCAG 2.1 specifications to make it easily readable for users with visual impairments.</p>
+              </div>
+            </div>
+
+            <!-- Right Diagnostics and Badges -->
+            <div class="contrast-results-card">
+              <div class="result-score-row">
+                <div class="score-circle">
+                  <span class="score-ratio" id="score-ratio-val">4.5:1</span>
+                  <span class="score-lbl">Ratio</span>
+                </div>
+                <div class="compliance-badges">
+                  <div class="badge-item">
+                    <span class="badge-title">Normal Text (AA)</span>
+                    <span class="badge-status status-pass" id="badge-normal-aa">Pass</span>
+                  </div>
+                  <div class="badge-item">
+                    <span class="badge-title">Normal Text (AAA)</span>
+                    <span class="badge-status status-fail" id="badge-normal-aaa">Fail</span>
+                  </div>
+                  <div class="badge-item">
+                    <span class="badge-title">Large Text (AA)</span>
+                    <span class="badge-status status-pass" id="badge-large-aa">Pass</span>
+                  </div>
+                  <div class="badge-item">
+                    <span class="badge-title">Large Text (AAA)</span>
+                    <span class="badge-status status-fail" id="badge-large-aaa">Fail</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recommendation alert box -->
+              <div class="contrast-alert-box" id="contrast-recommendation-box">
+                Contrast is sufficient for body text under standard Web Accessibility Guidelines.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <!-- Tabs (Harmony, Contrast, Export) -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-harmony" data-tab="view-harmony">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          Harmony
+        </button>
+        <button class="tab-btn" id="tab-btn-contrast" data-tab="view-contrast">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+            <path d="M12 18a6 6 0 1 0 0-12v12z"/>
+          </svg>
+          Contrast
+        </button>
+        <button class="tab-btn" id="tab-btn-export" data-tab="view-export">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Export
+        </button>
+      </div>
+
+      <!-- Tab Content: Harmony -->
+      <div class="sidebar-tab-content active" id="panel-harmony-settings">
+        <div class="input-group">
+          <div class="input-section-title">Seed Palette Color</div>
+          
+          <div class="input-field-wrapper">
+            <label>Base Color</label>
+            <div class="color-picker-container">
+              <input type="color" id="harmony-color-picker" value="#3b82f6">
+              <input type="text" id="harmony-color-text" class="text-input" value="#3b82f6" placeholder="#3b82f6">
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Harmony Rules</div>
+
+          <div class="input-field-wrapper">
+            <label for="harmony-rule-select">Harmony Type</label>
+            <select id="harmony-rule-select" class="text-input">
+              <option value="analogous">Analogous (Adjacent)</option>
+              <option value="monochromatic">Monochromatic (Shades)</option>
+              <option value="complementary">Complementary (Opposite)</option>
+              <option value="split">Split Complementary</option>
+              <option value="triadic">Triadic (3-Points)</option>
+              <option value="tetradic">Tetradic (4-Points / Square)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Contrast settings -->
+      <div class="sidebar-tab-content" id="panel-contrast-settings">
+        <div class="input-group">
+          <div class="input-section-title">Contrast Colors</div>
+          
+          <div class="input-field-wrapper">
+            <label>Text Color</label>
+            <div class="color-picker-container">
+              <input type="color" id="contrast-text-picker" value="#1c1c1e">
+              <input type="text" id="contrast-text-val" class="text-input" value="#1c1c1e" placeholder="#1c1c1e">
+            </div>
+          </div>
+
+          <div class="input-field-wrapper">
+            <label>Background Color</label>
+            <div class="color-picker-container">
+              <input type="color" id="contrast-bg-picker" value="#ffffff">
+              <input type="text" id="contrast-bg-val" class="text-input" value="#ffffff" placeholder="#ffffff">
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Helpers</div>
+          <button class="action-btn secondary" id="btn-contrast-swap">Swap Colors</button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Export -->
+      <div class="sidebar-tab-content" id="panel-export-settings">
+        <div class="input-group">
+          <div class="input-section-title">Save Design Palettes</div>
+          
+          <button class="action-btn" id="btn-export-css" style="margin-bottom: 8px;">
+            Copy CSS Variables
+          </button>
+          
+          <button class="action-btn secondary" id="btn-export-json" style="margin-bottom: 8px;">
+            Copy JSON Swatches
+          </button>
+          
+          <button class="action-btn secondary" id="btn-export-svg">
+            Download SVG Palettes
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

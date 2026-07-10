@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liquid Mesh Gradient Builder - Fluid Wallpapers</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Mesh Gradient">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          <path d="M2 12h20"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Play/Pause Animation button -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-quick-play" data-tooltip="Toggle Fluid Animation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Viewport -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+
+      <!-- Workspace Viewport -->
+      <div class="workspace-viewport">
+        <div class="mesh-canvas-card">
+          <!-- Canvas Wrapper holds overlay drag handles -->
+          <div class="mesh-canvas-wrapper" id="mesh-wrapper">
+            <canvas id="mesh-canvas"></canvas>
+            
+            <!-- Absolute positioned drag handles -->
+            <div class="drag-handle" id="handle-0" style="left: 20%; top: 20%; background-color: #ff5e62;"></div>
+            <div class="drag-handle" id="handle-1" style="left: 80%; top: 20%; background-color: #ff9966;"></div>
+            <div class="drag-handle" id="handle-2" style="left: 20%; top: 80%; background-color: #4f46e5;"></div>
+            <div class="drag-handle" id="handle-3" style="left: 80%; top: 80%; background-color: #06b6d4;"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-nodes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8v2H8z"/>
+          </svg>
+          Color Nodes
+        </button>
+        <button class="tab-btn" id="tab-btn-effects">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          Fluid Effects
+        </button>
+      </div>
+
+      <!-- Tab Content: Nodes settings -->
+      <div class="sidebar-tab-content active" id="panel-nodes-settings">
+        <!-- Node 1 Selector -->
+        <div class="input-group">
+          <div class="input-section-title" style="color: #ff5e62;">Node 1 (Top Left)</div>
+          
+          <div class="color-picker-container">
+            <input type="color" id="node-color-0" value="#ff5e62">
+            <input type="text" id="node-text-0" class="text-input" value="#ff5e62">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="node-radius-0">Node Radius (px)</label>
+              <span id="node-radius-lbl-0">380px</span>
+            </div>
+            <input type="range" id="node-radius-0" min="100" max="800" value="380">
+          </div>
+        </div>
+
+        <!-- Node 2 Selector -->
+        <div class="input-group">
+          <div class="input-section-title" style="color: #ff9966;">Node 2 (Top Right)</div>
+          
+          <div class="color-picker-container">
+            <input type="color" id="node-color-1" value="#ff9966">
+            <input type="text" id="node-text-1" class="text-input" value="#ff9966">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="node-radius-1">Node Radius (px)</label>
+              <span id="node-radius-lbl-1">360px</span>
+            </div>
+            <input type="range" id="node-radius-1" min="100" max="800" value="360">
+          </div>
+        </div>
+
+        <!-- Node 3 Selector -->
+        <div class="input-group">
+          <div class="input-section-title" style="color: #4f46e5;">Node 3 (Bottom Left)</div>
+          
+          <div class="color-picker-container">
+            <input type="color" id="node-color-2" value="#4f46e5">
+            <input type="text" id="node-text-2" class="text-input" value="#4f46e5">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="node-radius-2">Node Radius (px)</label>
+              <span id="node-radius-lbl-2">420px</span>
+            </div>
+            <input type="range" id="node-radius-2" min="100" max="800" value="420">
+          </div>
+        </div>
+
+        <!-- Node 4 Selector -->
+        <div class="input-group">
+          <div class="input-section-title" style="color: #06b6d4;">Node 4 (Bottom Right)</div>
+          
+          <div class="color-picker-container">
+            <input type="color" id="node-color-3" value="#06b6d4">
+            <input type="text" id="node-text-3" class="text-input" value="#06b6d4">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="node-radius-3">Node Radius (px)</label>
+              <span id="node-radius-lbl-3">400px</span>
+            </div>
+            <input type="range" id="node-radius-3" min="100" max="800" value="400">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Effects & Exporter -->
+      <div class="sidebar-tab-content" id="panel-effects-settings">
+        <!-- Floating Animation Parameters -->
+        <div class="input-group">
+          <div class="input-section-title">Fluid Motion</div>
+
+          <div class="checkbox-row">
+            <label class="switch-container">
+              <input type="checkbox" id="motion-float-toggle" checked>
+              <span class="switch-slider"></span>
+            </label>
+            <span class="checkbox-label">Float Anim (Auto Bounce)</span>
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="motion-speed">Motion Velocity</label>
+              <span id="motion-speed-lbl">1.5x</span>
+            </div>
+            <input type="range" id="motion-speed" min="2" max="60" value="15">
+          </div>
+        </div>
+
+        <!-- Noise & Grain texture overlay -->
+        <div class="input-group">
+          <div class="input-section-title">Overlay Texture</div>
+          
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="noise-grain">Pixel Noise Grain</label>
+              <span id="noise-grain-lbl">12%</span>
+            </div>
+            <input type="range" id="noise-grain" min="0" max="50" value="12">
+          </div>
+        </div>
+
+        <!-- PNG Exporter -->
+        <div class="input-group">
+          <div class="input-section-title">Export Wallpaper</div>
+
+          <div class="input-field-wrapper">
+            <label for="export-scale">Wallpaper Resolution</label>
+            <select id="export-scale" class="text-input">
+              <option value="1.0">Standard Resolution (Canvas Size)</option>
+              <option value="2.0">Full HD (1920 × 1080)</option>
+              <option value="3.0">Ultra 4K HD (3840 × 2160)</option>
+            </select>
+          </div>
+
+          <button class="action-btn" id="btn-export-mesh">Export PNG Wallpaper</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

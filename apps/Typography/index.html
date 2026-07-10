@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Font Pairer & Typography Playground</title>
+  <!-- Load base fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Photoshop-style narrow dock -->
+    <aside class="left-toolbar">
+      <div class="logo-icon" title="Typography Playground">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 7 4 4 20 4 20 7"/>
+          <line x1="9" y1="20" x2="15" y2="20"/>
+          <line x1="12" y1="4" x2="12" y2="20"/>
+        </svg>
+      </div>
+      
+      <div class="toolbar-divider"></div>
+      
+      <!-- Toggle baseline grid layout -->
+      <div class="toolbar-section">
+        <button class="tool-btn" id="btn-toggle-grid" data-tooltip="Toggle Typographic Baseline Grid">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Area -->
+    <main class="canvas-container">
+      <div class="canvas-bg"></div>
+
+      <!-- Workspace Viewport -->
+      <div class="workspace-viewport">
+        <!-- Mockup layout card containing contenteditable text -->
+        <div class="typography-preview-card" id="preview-card-wrap">
+          <!-- Optional overlay vertical baseline grid lines -->
+          <div class="baseline-grid-overlay" id="baseline-grid"></div>
+
+          <div class="article-mockup" id="article-preview-box">
+            <span class="article-badge" id="article-badge-el">Design Guidelines</span>
+            <h1 class="article-title" id="article-title-el" contenteditable="true">The Craft of Typographic Scales & Font Pairings</h1>
+            <p class="article-paragraph" id="article-body-el" contenteditable="true">Typography is the craft of endowing text with visual shape and personality. Great font pairings balance the weight, letter height, and structural layout of typefaces to construct a readable hierarchy. Try altering font styles, adjustments, and spacing scales in the inspector to see how type systems adapt.</p>
+            <button class="article-btn" id="article-btn-el">Explore Typo Scale</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Right Sidebar (Inspector & Configuration Panel) -->
+    <aside class="right-sidebar">
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tab-btn-headers" data-tab="panel-headers-settings">
+          Header Font
+        </button>
+        <button class="tab-btn" id="tab-btn-body" data-tab="panel-body-settings">
+          Body Font
+        </button>
+        <button class="tab-btn" id="tab-btn-scales" data-tab="panel-scales-settings">
+          Type Scales
+        </button>
+      </div>
+
+      <!-- Tab Content: Header Font Configuration -->
+      <div class="sidebar-tab-content active" id="panel-headers-settings">
+        <div class="input-group">
+          <div class="input-section-title">Header Font Family</div>
+          
+          <div class="input-field-wrapper">
+            <label for="header-font-select">Font Family</label>
+            <select id="header-font-select" class="text-input">
+              <option value="Outfit" selected>Outfit (Sans-Serif)</option>
+              <option value="Inter">Inter (Clean Neutral)</option>
+              <option value="Playfair Display">Playfair Display (Elegant Serif)</option>
+              <option value="Montserrat">Montserrat (Geometric)</option>
+              <option value="Lora">Lora (Literary Serif)</option>
+              <option value="Merriweather">Merriweather (Classic Serif)</option>
+              <option value="Syne">Syne (Artistic Display)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Monospace)</option>
+              <option value="System-fallback">Local Default OS Font</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="header-weight-select">Font Weight</label>
+            <select id="header-weight-select" class="text-input">
+              <option value="300">Light (300)</option>
+              <option value="400">Regular (400)</option>
+              <option value="500">Medium (500)</option>
+              <option value="600">Semi-Bold (600)</option>
+              <option value="700" selected>Bold (700)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Header Spacing</div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="header-size">Font Size (px)</label>
+              <span id="header-size-lbl">32px</span>
+            </div>
+            <input type="range" id="header-size" min="18" max="72" value="32">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="header-lineheight">Line Height</label>
+              <span id="header-lineheight-lbl">1.2</span>
+            </div>
+            <input type="range" id="header-lineheight" min="10" max="20" value="12">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="header-letterspacing">Letter Spacing (px)</label>
+              <span id="header-letterspacing-lbl">-0.5px</span>
+            </div>
+            <input type="range" id="header-letterspacing" min="-30" max="100" value="-5">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Body Font Configuration -->
+      <div class="sidebar-tab-content" id="panel-body-settings">
+        <div class="input-group">
+          <div class="input-section-title">Body Font Family</div>
+          
+          <div class="input-field-wrapper">
+            <label for="body-font-select">Font Family</label>
+            <select id="body-font-select" class="text-input">
+              <option value="Inter" selected>Inter (Clean Neutral)</option>
+              <option value="Outfit">Outfit (Sans-Serif)</option>
+              <option value="Playfair Display">Playfair Display (Elegant Serif)</option>
+              <option value="Montserrat">Montserrat (Geometric)</option>
+              <option value="Lora">Lora (Literary Serif)</option>
+              <option value="Merriweather">Merriweather (Classic Serif)</option>
+              <option value="JetBrains Mono">JetBrains Mono (Monospace)</option>
+              <option value="System-fallback">Local Default OS Font</option>
+            </select>
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="body-weight-select">Font Weight</label>
+            <select id="body-weight-select" class="text-input">
+              <option value="300">Light (300)</option>
+              <option value="400" selected>Regular (400)</option>
+              <option value="500">Medium (500)</option>
+              <option value="600">Semi-Bold (600)</option>
+              <option value="700">Bold (700)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Body Spacing</div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="body-size">Font Size (px)</label>
+              <span id="body-size-lbl">14px</span>
+            </div>
+            <input type="range" id="body-size" min="11" max="24" value="14">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="body-lineheight">Line Height</label>
+              <span id="body-lineheight-lbl">1.6</span>
+            </div>
+            <input type="range" id="body-lineheight" min="12" max="25" value="16">
+          </div>
+
+          <div class="input-field-wrapper">
+            <div class="range-labels">
+              <label for="body-letterspacing">Letter Spacing (px)</label>
+              <span id="body-letterspacing-lbl">0px</span>
+            </div>
+            <input type="range" id="body-letterspacing" min="-10" max="50" value="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Type Scale Calculator -->
+      <div class="sidebar-tab-content" id="panel-scales-settings">
+        <div class="input-group">
+          <div class="input-section-title">Scale Parameters</div>
+          
+          <div class="input-field-wrapper">
+            <label for="scale-base">Base Size (px)</label>
+            <input type="number" id="scale-base" class="text-input" value="16" min="10" max="32">
+          </div>
+
+          <div class="input-field-wrapper">
+            <label for="scale-ratio">Scale Ratio</label>
+            <select id="scale-ratio" class="text-input">
+              <option value="1.067">Minor Second (1.067)</option>
+              <option value="1.125">Major Second (1.125)</option>
+              <option value="1.200" selected>Minor Third (1.200)</option>
+              <option value="1.250">Major Third (1.250)</option>
+              <option value="1.333">Perfect Fourth (1.333)</option>
+              <option value="1.500">Perfect Fifth (1.500)</option>
+              <option value="1.618">Golden Ratio (1.618)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <div class="input-section-title">Sizing Guide</div>
+          <div class="spacing-table-container">
+            <table class="spacing-table" id="typo-scale-table">
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>Formula</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Computed sizes pop here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <button class="action-btn" id="btn-copy-typo-css">Copy Typography CSS</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Toast Notification Overlay -->
+  <div class="app-toast" id="app-toast">Copied to Clipboard!</div>
+
+  <script src="app.js"></script>
+</body>
+</html>

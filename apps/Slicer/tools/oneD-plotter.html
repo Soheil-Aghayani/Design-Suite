@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>1D Vector Signature Studio</title>
+    <link rel="stylesheet" href="../css/tool.css">
+    <style>
+        :root {
+            --studio-bg: #fbfbfd;
+            --accent: #007aff;
+            --sidebar-glass: rgba(245, 245, 247, 0.7);
+            --border: rgba(0,0,0,0.06);
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+        }
+
+        body { 
+            padding: 0; margin: 0; background: var(--studio-bg); 
+            font-family: "Segoe UI", -apple-system, sans-serif;
+            color: var(--text-primary);
+            height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+        }
+        
+        /* --- Signature Toolbar --- */
+        #studio-toolbar {
+            height: 72px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 32px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .brand-section { display: flex; align-items: center; gap: 14px; }
+        .brand-section img { width: 28px; filter: invert(33%) sepia(90%) saturate(1914%) hue-rotate(197deg) brightness(101%) contrast(105%); }
+        .brand-section h1 { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; margin: 0; text-transform: uppercase; }
+
+        .toolbar-actions { display: flex; align-items: center; gap: 24px; }
+        .tool-field { display: flex; flex-direction: column; gap: 4px; }
+        .tool-field label { font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; }
+        
+        .input-inline {
+            background: #f2f2f7; border: none; border-radius: 8px;
+            padding: 6px 12px; font-weight: 700; font-size: 0.9rem; color: var(--text-primary);
+            width: 70px; transition: all 0.2s;
+        }
+        .input-inline:focus { background: white; box-shadow: 0 0 0 2px var(--accent); outline: none; }
+
+        /* --- Main Layout --- */
+        #studio-layout {
+            flex: 1; display: flex; overflow: hidden;
+        }
+
+        /* --- Stage --- */
+        #studio-stage {
+            flex: 1; padding: 60px; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, #ffffff 0%, #f5f5f7 100%);
+            position: relative;
+        }
+        .visualizer-card {
+            width: 100%; max-width: 1200px; background: white; border-radius: 32px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+            padding: 100px 60px; position: relative;
+        }
+        canvas { width: 100%; height: auto; }
+
+        /* --- Inspector Sidebar --- */
+        #studio-inspector {
+            width: 400px; background: var(--sidebar-glass); backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; padding: 32px; gap: 32px;
+            overflow-y: auto;
+        }
+
+        .inspector-section { display: flex; flex-direction: column; gap: 16px; }
+        .inspector-header { display: flex; align-items: center; gap: 10px; font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; }
+        .inspector-header img { width: 16px; opacity: 0.6; }
+
+        .object-card {
+            background: white; border-radius: 16px; padding: 18px;
+            border: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.2s;
+        }
+        .object-card:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.05); border-color: var(--accent); }
+
+        .card-header { display: flex; align-items: center; justify-content: space-between; }
+        .color-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 1px rgba(0,0,0,0.1); }
+
+        .input-card { 
+            background: #f2f2f7; border: 1px solid transparent; border-radius: 10px;
+            padding: 10px 14px; font-weight: 700; font-size: 0.95rem; width: 100%;
+        }
+        .input-card:focus { background: white; border-color: var(--accent); outline: none; }
+
+        .btn-signature {
+            height: 48px; border-radius: 12px; border: none; font-weight: 800; font-size: 0.9rem;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .btn-primary { background: var(--text-primary); color: white; }
+        .btn-primary:hover { background: var(--accent); transform: scale(1.02); }
+        .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--text-secondary); }
+        .btn-ghost:hover { background: white; border-color: var(--accent); color: var(--accent); }
+
+        .row-gap { display: flex; align-items: center; gap: 12px; }
+        .delete-icon { cursor: pointer; color: var(--text-secondary); font-size: 1.2rem; transition: color 0.2s; }
+        .delete-icon:hover { color: #ff3b30; }
+
+        /* Scrollbar styling */
+        #studio-inspector::-webkit-scrollbar { width: 6px; }
+        #studio-inspector::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<header id="studio-toolbar">
+    <div class="brand-section">
+        <img src="../assets/icons/linear_scale.svg" alt="">
+        <h1>Vector Studio Signature</h1>
+    </div>
+
+    <div class="toolbar-actions">
+        <div class="tool-field">
+            <label>Range Instrument</label>
+            <div class="row-gap">
+                <input type="number" id="start" class="input-inline" value="0">
+                <span style="opacity: 0.3">→</span>
+                <input type="number" id="end" class="input-inline" value="10">
+            </div>
+        </div>
+        <div class="tool-field">
+            <label>Precision</label>
+            <div class="row-gap">
+                <input type="number" id="step" class="input-inline" value="1" step="0.1">
+                <input type="number" id="minor-count" class="input-inline" value="4">
+            </div>
+        </div>
+        <div style="width: 1px; height: 32px; background: var(--border);"></div>
+        <div class="row-gap">
+            <button class="btn-signature btn-ghost" style="height: 40px; width: 40px; padding:0; border-radius:50%" onclick="location.reload()" title="Reset Studio">
+                <img src="../assets/icons/delete_forever.svg" style="width: 18px; opacity:0.6; filter:none;" alt="">
+            </button>
+            <button class="btn-signature btn-primary" style="height: 40px; padding: 0 20px;" onclick="download()">
+                Export 4K Studio
+            </button>
+        </div>
+    </div>
+</header>
+
+<div id="studio-layout">
+    <main id="studio-stage">
+        <div class="visualizer-card">
+            <canvas id="canvas" width="2000" height="400"></canvas>
+        </div>
+    </main>
+
+    <aside id="studio-inspector">
+        <div class="inspector-section">
+            <div class="inspector-header">
+                <img src="../assets/icons/layers.svg" alt="">
+                Measurement Objects
+            </div>
+            <div id="vector-list" style="display: flex; flex-direction: column; gap: 14px;"></div>
+            <button class="btn-signature btn-ghost" onclick="addVector()">+ Add Object</button>
+        </div>
+
+        <div class="inspector-section">
+            <div class="inspector-header">
+                <img src="../assets/icons/palette.svg" alt="">
+                Atmosphere & Styling
+            </div>
+            <div class="object-card">
+                <div class="row-gap">
+                    <label style="flex:1; font-weight:700; font-size: 0.85rem;">Studio Accent</label>
+                    <input type="color" id="color" value="#007aff">
+                </div>
+                <div class="tool-field">
+                    <label>Units</label>
+                    <input type="text" id="unit" class="input-card" value="m">
+                </div>
+                <div class="row-gap" style="justify-content: space-between; padding-top: 5px;">
+                    <div class="row-gap"><input type="checkbox" id="labels" checked><label style="font-weight:700;font-size:0.8rem;">Markings</label></div>
+                    <div class="row-gap"><input type="checkbox" id="persian" checked><label style="font-weight:700;font-size:0.8rem;">Persian</label></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="inspector-section" style="margin-top: auto;">
+            <div class="tool-field">
+                <label>Instrument Title</label>
+                <input type="text" id="title" class="input-card" placeholder="Untitled Project">
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+    const el = id => document.getElementById(id);
+    const vectorList = el('vector-list');
+    const ui = ['title','start','end','step','minor-count','unit','color','labels','persian'].reduce((a,c)=>({...a,[c]:el(c)}), {});
+    
+    let prefs = { size: 24, font: 'Segoe UI' };
+
+    function toPersian(n) { if (!ui.persian.checked) return n.toString(); const id = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹']; return n.toString().replace(/[0-9]/g, w => id[+w]); }
+
+    function addVector(s=2, e=8, lbl="VECTOR", col="#ff3b30", off=-100) {
+        const card = document.createElement('div');
+        card.className = 'object-card';
+        card.innerHTML = `
+            <div class="card-header">
+                <div class="row-gap">
+                    <div class="color-dot" style="background:${col}"></div>
+                    <input type="text" class="input-card" style="border:none; background:none; padding:0; width:120px;" value="${lbl}" oninput="this.parentElement.previousElementSibling.style.backgroundColor=this.parentElement.nextElementSibling.value; draw(); save()">
+                </div>
+                <input type="color" value="${col}" style="visibility:hidden; width:0; height:0;" oninput="this.parentElement.querySelector('.color-dot').style.backgroundColor=this.value; draw(); save()">
+                <div class="delete-icon" onclick="this.parentElement.parentElement.remove(); draw(); save()">✕</div>
+            </div>
+            <div class="row-gap">
+                <div class="tool-field" style="flex:1"><label>Start</label><input type="number" class="input-card" value="${s}" step="0.1" oninput="draw(); save()"></div>
+                <div class="tool-field" style="flex:1"><label>End</label><input type="number" class="input-card" value="${e}" step="0.1" oninput="draw(); save()"></div>
+                <div class="tool-field" style="width:70px"><label>Y-Offs</label><input type="number" class="input-card" value="${off}" step="10" oninput="draw(); save()"></div>
+            </div>
+        `;
+        // Make color dot clickable
+        card.querySelector('.color-dot').onclick = () => card.querySelectorAll('input')[1].click();
+        vectorList.appendChild(card);
+        draw(); save();
+    }
+
+    function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        const s = parseFloat(ui.start.value), e = parseFloat(ui.end.value), st = parseFloat(ui.step.value)||1;
+        const mc = parseInt(ui['minor-count'].value)||0, col = ui.color.value;
+        const margin = 150, y = 250, tw = 2000-(margin*2), sx = v => margin+((v-s)/(e-s))*tw;
+
+        // 1. Atmosphere (Ultra Soft Glow)
+        const atmosphericGrad = ctx.createRadialGradient(1000, y, 0, 1000, y, 1200);
+        atmosphericGrad.addColorStop(0, col + '12'); atmosphericGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = atmosphericGrad; ctx.fillRect(0, 0, 2000, 400);
+
+        // 2. The Signature Aluminum Axis
+        // Base structure
+        ctx.strokeStyle = '#d1d1d6'; ctx.lineWidth = 16; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(margin, y); ctx.lineTo(sx(e), y); ctx.stroke();
+        
+        // Metallic Highlight
+        const aluGrad = ctx.createLinearGradient(0, y-8, 0, y+8);
+        aluGrad.addColorStop(0, 'rgba(255,255,255,0.8)'); aluGrad.addColorStop(0.5, 'transparent'); aluGrad.addColorStop(1, 'rgba(0,0,0,0.1)');
+        ctx.strokeStyle = aluGrad; ctx.lineWidth = 12; ctx.stroke();
+
+        // Accent Core
+        ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.stroke();
+
+        // Premium Signature Arrow
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(sx(e), y); ctx.lineTo(sx(e)-50, y-28); ctx.lineTo(sx(e)-35, y); ctx.lineTo(sx(e)-50, y+28); ctx.closePath(); ctx.fill();
+
+        // 3. Signature Markings
+        const steps = Math.floor((e-s)/st);
+        for(let i=0; i<=steps; i++){
+            const v = s+(i*st), px = sx(v);
+            if(v>=s && v<=e){
+                ctx.strokeStyle = '#1d1d1f'; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(px, y-35); ctx.lineTo(px, y+35); ctx.stroke();
+                
+                if(ui.labels.checked) {
+                    ctx.fillStyle = '#86868b'; ctx.font = `900 ${prefs.size}px "${prefs.font}"`; ctx.textAlign = 'center';
+                    ctx.fillText(toPersian(v.toFixed(1).replace('.0','')), px, y+90);
+                }
+            }
+            if(mc > 0 && i < steps) {
+                const subSt = st/(mc+1);
+                for(let j=1; j<=mc; j++) {
+                    const sv = v + (j*subSt), spx = sx(sv);
+                    if(sv < e) {
+                        ctx.strokeStyle = 'rgba(0,0,0,0.08)'; ctx.lineWidth = 3;
+                        ctx.beginPath(); ctx.moveTo(spx, y-18); ctx.lineTo(spx, y+18); ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        // 4. Title (Top Floating)
+        if(ui.title.value){
+            ctx.fillStyle = '#1d1d1f'; 
+            ctx.font = `900 ${prefs.size*1.8}px "${prefs.font}"`;
+            ctx.textAlign='center'; ctx.fillText(ui.title.value.toUpperCase(), 1000, 80);
+        }
+
+        // 5. Signature Vector Objects
+        Array.from(vectorList.querySelectorAll('.object-card')).forEach(card => {
+            const inputs = card.querySelectorAll('input');
+            const vCol = inputs[1].value, vLbl = inputs[0].value;
+            const vs = parseFloat(inputs[2].value), ve = parseFloat(inputs[3].value), vOff = parseFloat(inputs[4].value);
+            
+            const x1 = sx(vs), x2 = sx(ve), vy = y+vOff;
+            
+            // Signature Vector Body
+            ctx.strokeStyle = vCol; ctx.lineWidth = 12; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(x1, vy); ctx.lineTo(x2, vy); ctx.stroke();
+            
+            // Inner Core
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 4; ctx.stroke();
+
+            const dir = x2>x1?1:-1;
+            ctx.fillStyle = vCol; 
+            ctx.beginPath(); ctx.moveTo(x2, vy); ctx.lineTo(x2-35*dir, vy-18); ctx.lineTo(x2-25*dir, vy); ctx.lineTo(x2-35*dir, vy+18); ctx.closePath(); ctx.fill();
+            
+            if(vLbl) {
+                ctx.font = `900 ${prefs.size*1.1}px "${prefs.font}"`;
+                ctx.fillStyle = vCol; ctx.fillText(vLbl.toUpperCase(), (x1+x2)/2, vy-35);
+            }
+            // Vertical Support Lines
+            ctx.setLineDash([10, 10]); ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(x1, vy); ctx.lineTo(x1, y); ctx.moveTo(x2, vy); ctx.lineTo(x2, y); ctx.stroke();
+            ctx.setLineDash([]);
+        });
+        
+        if(ui.unit.value){ 
+            ctx.fillStyle = col; ctx.font = `900 ${prefs.size*1.4}px "${prefs.font}"`;
+            ctx.textAlign='left'; ctx.fillText(ui.unit.value, sx(e)+80, y+10); 
+        }
+    }
+
+    function save() {
+        const vecs = Array.from(vectorList.querySelectorAll('.object-card')).map(c => {
+            const i = c.querySelectorAll('input');
+            return { lbl: i[0].value, col: i[1].value, s: i[2].value, e: i[3].value, off: i[4].value };
+        });
+        const data = { vecs, ...Object.keys(ui).reduce((a,c)=>({...a,[c]:ui[c].type==='checkbox'?ui[c].checked:ui[c].value}), {}) };
+        localStorage.setItem('suite_tool_oneD_sig', JSON.stringify(data));
+    }
+
+    function load() {
+        const raw = localStorage.getItem('suite_tool_oneD_sig');
+        if (raw) {
+            const d = JSON.parse(raw);
+            Object.keys(d).forEach(k => { if(ui[k]) { if(ui[k].type==='checkbox') ui[k].checked = d[k]; else ui[k].value = d[k]; } });
+            d.vecs?.forEach(v => addVector(v.s, v.e, v.lbl, v.col, v.off));
+        } else { addVector(1.5, 8.5, "PRIMARY_FORCE", "#007aff", -100); }
+        draw();
+    }
+
+    function download() { const l = document.createElement('a'); l.download = `signature-vector-${Date.now()}.png`; l.href = canvas.toDataURL(); l.click(); }
+
+    window.addEventListener('message', e => { if(e.data.type === 'SYNC_PREFS') { prefs = e.data.prefs; draw(); } });
+    Object.values(ui).forEach(el => { if(el.oninput) return; el.oninput = () => { draw(); save(); } });
+    window.onload = () => { window.parent.postMessage({type:'GET_PREFS'}, '*'); load(); };
+</script>
+</body>
+</html>

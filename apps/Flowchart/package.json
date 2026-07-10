@@ -1,0 +1,13 @@
+{
+  "name": "minimal-flowchart-designer",
+  "version": "1.0.0",
+  "description": "A minimal, responsive flowchart designer with a 4-column branching layout.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}
