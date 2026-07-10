@@ -9,7 +9,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     keyBuyPrice: 110000, // in Toman
     keySellPrice: 105.00, // Listing price (what buyer pays) in Steam currency
-    isBuyerPays: true
+    isBuyerPays: true,
+
+    // Steam Profile Setup (Saved locally in browser)
+    steamApiKey: localStorage.getItem('steam_api_key') || '',
+    steamId: localStorage.getItem('steam_id') || '',
+    ownedApps: new Set(JSON.parse(localStorage.getItem('steam_owned_apps') || '[]'))
   };
 
   // Conversion rates relative to USD (1 USD = X target currency)
@@ -60,6 +65,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnDbSearch = document.getElementById('btn-db-search');
   const dbSearchResultsList = document.getElementById('db-search-results-list');
   const appToast = document.getElementById('app-toast');
+
+  // Steam Profile Integration Elements
+  const profileToggle = document.getElementById('profile-toggle');
+  const profileContent = document.getElementById('profile-content');
+  const profilePanel = document.querySelector('.steam-profile-panel');
+  const inputSteamKey = document.getElementById('input-steam-key');
+  const inputSteamId = document.getElementById('input-steam-id');
+  const btnSyncProfile = document.getElementById('btn-sync-profile');
+  const btnFetchWishlist = document.getElementById('btn-fetch-wishlist');
+  const wishlistContainer = document.getElementById('wishlist-container');
+  const wishlistList = document.getElementById('wishlist-list');
+  const profileStatusText = document.getElementById('profile-status-text');
 
   // --- ARBITRAGE FORMULAS (STEAM ROUNDING) ---
   
@@ -407,6 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const appId = game.steamAppID;
           let editionsHtml = "";
           let dlcBadge = "";
+          
+          let libraryBadge = "";
+          if (state.ownedApps.has(Number(appId))) {
+            libraryBadge = `<span class="db-library-badge">In Library</span>`;
+          }
 
           try {
             // Fetch local currency price and editions directly from Steam
@@ -504,7 +526,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="db-item-left">
                 <img class="db-item-logo" src="${game.thumb}" alt="${escapeHtml(game.external)}" onerror="this.style.display='none'">
                 <div class="db-item-title-wrapper">
-                  <span class="db-item-title" title="${escapeHtml(game.external)}">${escapeHtml(game.external)}</span>
+                  <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <span class="db-item-title" title="${escapeHtml(game.external)}">${escapeHtml(game.external)}</span>
+                    ${libraryBadge}
+                  </div>
                   ${dlcBadge}
                 </div>
               </div>
@@ -613,6 +638,143 @@ document.addEventListener('DOMContentLoaded', () => {
       dbSearchResultsList.innerHTML = '';
       dbSearchResultsList.style.display = 'none';
       inputDbSearch.value = '';
+    }
+  });
+
+  // --- STEAM PROFILE INTEGRATION LOGIC ---
+
+  // Initialize input fields from state
+  inputSteamKey.value = state.steamApiKey;
+  inputSteamId.value = state.steamId;
+  updateProfileStatusText();
+
+  // Toggle Panel
+  profileToggle.addEventListener('click', () => {
+    const isHidden = profileContent.style.display === 'none';
+    profileContent.style.display = isHidden ? 'flex' : 'none';
+    profilePanel.classList.toggle('open', isHidden);
+  });
+
+  function updateProfileStatusText() {
+    if (state.steamId) {
+      const count = state.ownedApps.size;
+      profileStatusText.textContent = `Steam Profile Connected: ${count > 0 ? `${count} Games Synced` : 'Ready to Sync'}`;
+    } else {
+      profileStatusText.textContent = "Connect Steam Profile (Local Setup)";
+    }
+  }
+
+  // Save & Sync Library Button
+  btnSyncProfile.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const key = inputSteamKey.value.trim();
+    const steamid = inputSteamId.value.trim();
+
+    if (!key || !steamid) {
+      showToast("Please enter both API Key and Steam ID!");
+      return;
+    }
+
+    btnSyncProfile.disabled = true;
+    btnSyncProfile.textContent = "Syncing...";
+
+    try {
+      // Save locally
+      localStorage.setItem('steam_api_key', key);
+      localStorage.setItem('steam_id', steamid);
+      state.steamApiKey = key;
+      state.steamId = steamid;
+
+      // Query Steam Owned Games API via proxy
+      const ownedGamesUrl = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${key}&steamid=${steamid}&format=json`;
+      const data = await fetchWithProxyFallback(ownedGamesUrl);
+
+      if (data && data.response && data.response.games) {
+        const gameList = data.response.games;
+        const appIds = gameList.map(g => Number(g.appid));
+        localStorage.setItem('steam_owned_apps', JSON.stringify(appIds));
+        state.ownedApps = new Set(appIds);
+        updateProfileStatusText();
+        showToast(`Synced library! Found ${gameList.length} owned games.`);
+      } else {
+        showToast("Connected, but could not read owned games list. Check privacy settings!");
+      }
+    } catch (err) {
+      console.error("Failed to sync Steam library", err);
+      showToast("Sync failed. Check credentials/Internet.");
+    } finally {
+      btnSyncProfile.disabled = false;
+      btnSyncProfile.textContent = "Save & Sync Library";
+    }
+  });
+
+  // Import Wishlist Button
+  btnFetchWishlist.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const steamid = inputSteamId.value.trim() || state.steamId;
+
+    if (!steamid) {
+      showToast("Please enter your Steam ID first!");
+      return;
+    }
+
+    btnFetchWishlist.disabled = true;
+    btnFetchWishlist.textContent = "Importing...";
+    wishlistList.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center; padding: 12px 0;">
+      <span class="loading-dot-pulse" style="margin-right: 6px;"></span> Fetching wishlist from Steam...
+    </div>`;
+    wishlistContainer.style.display = "block";
+
+    try {
+      // Fetch wishlist from Steam storefront API
+      const wishlistUrl = `https://store.steampowered.com/wishlist/profiles/${steamid}/wishlistdata/`;
+      const data = await fetchWithProxyFallback(wishlistUrl);
+
+      if (data && Object.keys(data).length > 0) {
+        wishlistList.innerHTML = "";
+        
+        Object.keys(data).forEach(appId => {
+          const game = data[appId];
+          const itemBtn = document.createElement('button');
+          itemBtn.className = "wishlist-item-btn";
+          
+          let priceHtml = "";
+          if (game.subs && game.subs.length > 0 && game.subs[0].price) {
+            const priceVal = game.subs[0].price / 100;
+            priceHtml = `<span class="wishlist-item-price">${priceVal} ${state.currencySymbol}</span>`;
+          } else if (game.prerelease) {
+            priceHtml = `<span class="wishlist-item-price" style="color: var(--text-muted); font-size: 10px;">Pre-release</span>`;
+          } else if (game.is_free_game) {
+            priceHtml = `<span class="wishlist-item-price" style="color: #10b981;">Free</span>`;
+          }
+
+          itemBtn.innerHTML = `
+            <span class="wishlist-item-title">${escapeHtml(game.name)}</span>
+            ${priceHtml}
+          `;
+
+          // Quick selection behavior: load it in autocomplete!
+          itemBtn.addEventListener('click', () => {
+            inputDbSearch.value = game.name;
+            searchSteamDBApp();
+            // Scroll to search input
+            inputDbSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            inputDbSearch.focus();
+          });
+
+          wishlistList.appendChild(itemBtn);
+        });
+
+        showToast(`Imported ${Object.keys(data).length} wishlist games!`);
+      } else {
+        wishlistList.innerHTML = `<div style="font-size: 11px; color: var(--text-secondary); text-align: center; padding: 12px 0;">No games found or wishlist is set to private.</div>`;
+      }
+    } catch (err) {
+      console.error("Failed to fetch wishlist", err);
+      wishlistList.innerHTML = `<div style="font-size: 11px; color: #ef4444; text-align: center; padding: 12px 0;">Failed to load wishlist. Make sure your profile & wishlist are Public!</div>`;
+    } finally {
+      btnFetchWishlist.disabled = false;
+      btnFetchWishlist.textContent = "Import Wishlist";
     }
   });
 

@@ -24,6 +24,43 @@
         <p class="subtitle">Calculate exactly how many TF2 keys to buy and sell to fund your Steam games in Tomans.</p>
       </header>
 
+      <!-- Steam Profile Settings Panel -->
+      <section class="steam-profile-panel">
+        <div class="panel-header" id="profile-toggle">
+          <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span id="profile-status-text">Connect Steam Profile (Local Setup)</span>
+          <span class="toggle-arrow">▼</span>
+        </div>
+        <div class="panel-content" id="profile-content" style="display: none;">
+          <p class="panel-note">🔒 Credentials are saved locally in your browser (localStorage). They are never sent to any server other than Steam's API, and never pushed to GitHub.</p>
+          <div class="input-row">
+            <div class="input-field-wrapper flex-2">
+              <label for="input-steam-key">Steam Web API Key</label>
+              <input type="password" id="input-steam-key" class="text-input" placeholder="Enter Steam API Key...">
+            </div>
+            <div class="input-field-wrapper flex-1">
+              <label for="input-steam-id">Steam ID (765...)</label>
+              <input type="text" id="input-steam-id" class="text-input" placeholder="Enter Steam ID...">
+            </div>
+          </div>
+          <div class="panel-actions">
+            <button id="btn-sync-profile" class="db-btn primary">Save & Sync Library</button>
+            <button id="btn-fetch-wishlist" class="db-btn secondary">Import Wishlist</button>
+          </div>
+          
+          <!-- Wishlist Container -->
+          <div id="wishlist-container" style="display: none; margin-top: 12px; border-top: 1px dashed var(--card-border); padding-top: 12px;">
+            <span class="db-editions-title" style="margin-bottom: 8px; display: block;">Your Wishlist Games:</span>
+            <div id="wishlist-list" class="wishlist-quick-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; padding-right: 4px;">
+              <!-- Wishlist items load here -->
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Main Layout Grid: Inputs on Left, Results on Right -->
       <div class="calculator-grid">
         

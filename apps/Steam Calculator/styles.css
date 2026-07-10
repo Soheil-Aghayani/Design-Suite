@@ -695,3 +695,120 @@ select.text-input {
   background-color: #ffffff;
   color: #1c1c1e;
 }
+
+/* Steam Profile Panel Styles */
+.steam-profile-panel {
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+}
+
+.steam-profile-panel:hover {
+  border-color: var(--card-hover-border);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.panel-header:hover {
+  color: var(--text-primary);
+}
+
+.panel-icon {
+  width: 18px;
+  height: 18px;
+  stroke: var(--text-secondary);
+}
+
+.panel-header:hover .panel-icon {
+  stroke: var(--text-primary);
+}
+
+.toggle-arrow {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+
+.steam-profile-panel.open .toggle-arrow {
+  transform: rotate(180deg);
+}
+
+.panel-content {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px dashed var(--card-border);
+  padding-top: 12px;
+}
+
+.panel-note {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wishlist-quick-list {
+  scrollbar-width: thin;
+}
+
+.wishlist-item-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.wishlist-item-btn:hover {
+  background: var(--input-bg);
+  border-color: var(--accent-color);
+}
+
+.wishlist-item-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.wishlist-item-price {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.db-library-badge {
+  background-color: #10b981;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
