@@ -441,10 +441,107 @@
       height: 16px;
       stroke-width: 2.5px;
     }
+    /* Mobile Menu Toggle Button */
+    .mobile-menu-toggle {
+      display: none;
+      position: fixed;
+      top: 8px;
+      left: 12px;
+      z-index: 2000;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--sidebar-bg);
+      border: 1px solid var(--sidebar-border);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition);
+    }
+    
+    .mobile-menu-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .mobile-menu-toggle:hover {
+      background-color: var(--bg-color);
+    }
+
+    /* Sidebar Backdrop Overlay */
+    .sidebar-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.4);
+      z-index: 990;
+      transition: opacity var(--transition);
+    }
+
+    /* Mobile media queries */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 1000;
+        box-shadow: none;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .main-viewport {
+        width: 100vw;
+      }
+      
+      .home-dashboard {
+        padding: 72px 16px 24px 16px !important;
+      }
+
+      .workspace-header {
+        padding-left: 64px !important;
+      }
+      
+      .dashboard-hero {
+        margin-bottom: 32px !important;
+      }
+      
+      .hero-title {
+        font-size: 26px !important;
+      }
+      
+      .cards-grid {
+        gap: 16px !important;
+        grid-template-columns: 1fr !important;
+      }
+      
+      .tool-card {
+        padding: 20px !important;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="app-layout">
+    <!-- Mobile Menu Toggle Button -->
+    <button class="mobile-menu-toggle" id="menu-toggle-btn" style="display: none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
+    <!-- Sidebar Overlay Backdrop -->
+    <div class="sidebar-overlay" id="sidebar-overlay" style="display: none;"></div>
+
     <!-- Left Switcher Dock -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -1200,6 +1297,53 @@
       if (toolParam && toolPaths[toolParam]) {
         switchTool(toolParam);
       }
+
+      // Mobile sidebar responsive toggling
+      const menuToggleBtn = document.getElementById('menu-toggle-btn');
+      const sidebarOverlay = document.getElementById('sidebar-overlay');
+      const sidebar = document.querySelector('.sidebar');
+
+      function toggleSidebar(open) {
+        const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
+        sidebar.classList.toggle('open', isOpen);
+        sidebarOverlay.style.display = isOpen ? 'block' : 'none';
+        
+        if (isOpen) {
+          menuToggleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          `;
+        } else {
+          menuToggleBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          `;
+        }
+      }
+
+      menuToggleBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidebar();
+      });
+
+      sidebarOverlay.addEventListener('click', () => {
+        toggleSidebar(false);
+      });
+
+      // Close sidebar when clicking links or cards on mobile
+      const closers = document.querySelectorAll('.nav-item, .tool-card');
+      closers.forEach(el => {
+        el.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            toggleSidebar(false);
+          }
+        });
+      });
     });
   </script>
 </body>
