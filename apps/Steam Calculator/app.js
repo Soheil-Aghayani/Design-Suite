@@ -270,47 +270,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- INPUT EVENTS ---
   
+  function formatInputWithCommas(inputElement, stateKey, isDecimal = true) {
+    let cursorSelectionStart = inputElement.selectionStart;
+    let originalLen = inputElement.value.length;
+
+    let val = inputElement.value;
+    
+    // Remove all characters except digits and decimal point
+    let parts = val.replace(/,/g, '').split('.');
+    let integerPart = parts[0].replace(/\D/g, '');
+    let decimalPart = parts[1] !== undefined ? parts[1].replace(/\D/g, '').substring(0, 2) : null;
+    
+    if (integerPart === '' && (decimalPart === null || decimalPart === '')) {
+      inputElement.value = '';
+      state[stateKey] = 0;
+      updateCalculations();
+      return;
+    }
+
+    let num = parseInt(integerPart || '0', 10);
+    let formatted = num.toLocaleString();
+    
+    if (isDecimal && (decimalPart !== null || val.includes('.'))) {
+      formatted += '.' + (decimalPart || '');
+    }
+
+    inputElement.value = formatted;
+
+    let newLen = formatted.length;
+    let diff = newLen - originalLen;
+    inputElement.setSelectionRange(cursorSelectionStart + diff, cursorSelectionStart + diff);
+
+    // Update state with parsed float
+    const cleanFloat = parseFloat(formatted.replace(/,/g, '')) || 0;
+    state[stateKey] = cleanFloat;
+    updateCalculations();
+  }
+
   function registerInputEvents() {
     inputGamePrice.addEventListener('input', () => {
-      state.gamePrice = Math.max(0, parseFloat(inputGamePrice.value) || 0);
-      updateCalculations();
+      formatInputWithCommas(inputGamePrice, 'gamePrice', true);
     });
 
     inputWalletBalance.addEventListener('input', () => {
-      state.walletBalance = Math.max(0, parseFloat(inputWalletBalance.value) || 0);
-      updateCalculations();
+      formatInputWithCommas(inputWalletBalance, 'walletBalance', true);
     });
 
     inputKeyBuyPrice.addEventListener('input', () => {
-      let cursorSelectionStart = inputKeyBuyPrice.selectionStart;
-      let originalLen = inputKeyBuyPrice.value.length;
-
-      let rawVal = inputKeyBuyPrice.value.replace(/,/g, '');
-      let cleanVal = rawVal.replace(/\D/g, '');
-      
-      if (cleanVal === '') {
-        inputKeyBuyPrice.value = '';
-        state.keyBuyPrice = 0;
-        updateCalculations();
-        return;
-      }
-
-      let num = parseInt(cleanVal, 10);
-      let formatted = num.toLocaleString();
-
-      inputKeyBuyPrice.value = formatted;
-
-      let newLen = formatted.length;
-      let diff = newLen - originalLen;
-      inputKeyBuyPrice.setSelectionRange(cursorSelectionStart + diff, cursorSelectionStart + diff);
-
-      state.keyBuyPrice = num;
-      updateCalculations();
+      formatInputWithCommas(inputKeyBuyPrice, 'keyBuyPrice', false);
     });
 
     inputKeySellPrice.addEventListener('input', () => {
-      state.keySellPrice = Math.max(0.01, parseFloat(inputKeySellPrice.value) || 0);
-      updateCalculations();
+      formatInputWithCommas(inputKeySellPrice, 'keySellPrice', true);
     });
 
     selectSteamCurrency.addEventListener('change', () => {
@@ -326,16 +337,17 @@ document.addEventListener('DOMContentLoaded', () => {
         state.keySellPrice = defaults.defaultSell;
         state.walletBalance = 0.00;
         
-        inputGamePrice.value = state.gamePrice.toFixed(state.currencyDecimals);
-        inputWalletBalance.value = state.walletBalance.toFixed(state.currencyDecimals);
-        inputKeySellPrice.value = state.keySellPrice.toFixed(state.currencyDecimals);
+        inputGamePrice.value = state.gamePrice.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals });
+        inputWalletBalance.value = state.walletBalance.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals });
+        inputKeySellPrice.value = state.keySellPrice.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals });
       }
       
-      inputGamePrice.step = state.currencyDecimals === 0 ? "1" : "0.01";
-      inputWalletBalance.step = state.currencyDecimals === 0 ? "1" : "0.01";
-      inputKeySellPrice.step = state.currencyDecimals === 0 ? "1" : "0.01";
-
       updateCalculations();
+      
+      // Auto fetch live key price on currency change
+      fetchLiveTF2KeyPrice();
+      // Load preloaded famous games for the new currency
+      loadFamousGamesSuggestions();
     });
   }
 
@@ -406,6 +418,150 @@ document.addEventListener('DOMContentLoaded', () => {
       return content[appId].data;
     }
     throw new Error("Could not fetch Steam details");
+  }
+
+  const currencyToSteamMarketId = {
+    'USD': 1,
+    'GBP': 2,
+    'EUR': 3,
+    'RUB': 5,
+    'TRY': 17,
+    'UAH': 18
+  };
+
+  const famousGames = [
+    { name: "GTA V", appId: "3240220" },
+    { name: "EA SPORTS FC 26", appId: "3405690" },
+    { name: "Elden Ring", appId: "1245620" },
+    { name: "Cyberpunk 2077", appId: "1091500" },
+    { name: "RDR 2", appId: "1174180" },
+    { name: "Hogwarts Legacy", appId: "1984200" },
+    { name: "GoW Ragnarök", appId: "2322010" },
+    { name: "CS2 Prime Upgrade", appId: "1808420" }
+  ];
+
+  async function fetchLiveTF2KeyPrice() {
+    const marketId = currencyToSteamMarketId[state.currencyCode];
+    if (!marketId) return;
+
+    const originalFeedback = rateFeedback.textContent;
+    rateFeedback.innerHTML = `<span class="loading-dot-pulse" style="margin-right: 6px;"></span> Fetching live TF2 key market price...`;
+
+    try {
+      const marketUrl = `https://steamcommunity.com/market/priceoverview/?appid=440&market_hash_name=Mann%20Co.%20Supply%20Crate%20Key&currency=${marketId}`;
+      const data = await fetchWithProxyFallback(marketUrl);
+
+      if (data && data.success && data.lowest_price) {
+        const priceStr = data.lowest_price;
+        let cleaned = priceStr.replace(/[^\d.,]/g, '').trim();
+        
+        if (state.currencyDecimals === 0) {
+          cleaned = cleaned.replace(/[.,]/g, '');
+        } else {
+          if (cleaned.match(/,\d{2}$/)) {
+            cleaned = cleaned.replace(/\./g, '').replace(/,/g, '.');
+          } else if (cleaned.match(/\.\d{2}$/)) {
+            cleaned = cleaned.replace(/,/g, '');
+          }
+        }
+        
+        const keyPrice = parseFloat(cleaned);
+        if (!isNaN(keyPrice) && keyPrice > 0) {
+          state.keySellPrice = keyPrice;
+          inputKeySellPrice.value = keyPrice.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals });
+          updateCalculations();
+          showToast(`Updated live TF2 Key price: ${formatSteamValue(keyPrice)}`);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to fetch live TF2 key price", err);
+      rateFeedback.textContent = originalFeedback;
+    }
+  }
+
+  async function loadFamousGamesSuggestions() {
+    const famousGamesContainer = document.getElementById('famous-games-list');
+    if (!famousGamesContainer) return;
+
+    famousGamesContainer.innerHTML = "";
+
+    const cacheKey = `famous_games_cache_${state.currencyCode}`;
+    const cacheTimeKey = `famous_games_cache_time_${state.currencyCode}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    const cachedTime = localStorage.getItem(cacheTimeKey);
+
+    const now = Date.now();
+    const cacheDuration = 12 * 60 * 60 * 1000; // 12 hours
+
+    if (cachedData && cachedTime && (now - Number(cachedTime) < cacheDuration)) {
+      renderFamousGames(JSON.parse(cachedData));
+      return;
+    }
+
+    // Render loading placeholders
+    famousGames.forEach(g => {
+      const btn = document.createElement('div');
+      btn.className = "wishlist-item-btn";
+      btn.style.opacity = "0.7";
+      btn.innerHTML = `
+        <span class="wishlist-item-title">${g.name}</span>
+        <span style="font-size: 9px; color: var(--text-muted);">loading...</span>
+      `;
+      famousGamesContainer.appendChild(btn);
+    });
+
+    // Fetch live prices in background
+    const results = [];
+    for (const g of famousGames) {
+      try {
+        const details = await fetchSteamLocalDetails(g.appId, state.currencyCode);
+        let priceText = "No Price";
+        let numericPrice = 0;
+        
+        if (details.price_overview) {
+          numericPrice = details.price_overview.final / 100;
+          priceText = formatSteamValue(numericPrice);
+          if (details.price_overview.discount_percent > 0) {
+            priceText += ` (-${details.price_overview.discount_percent}%)`;
+          }
+        } else if (details.is_free) {
+          priceText = "Free";
+        }
+        
+        results.push({ name: g.name, appId: g.appId, priceText, numericPrice });
+      } catch (err) {
+        console.warn(`Failed to preload price for ${g.name}`, err);
+        results.push({ name: g.name, appId: g.appId, priceText: "Enter Manually", numericPrice: 0 });
+      }
+    }
+
+    // Cache results
+    localStorage.setItem(cacheKey, JSON.stringify(results));
+    localStorage.setItem(cacheTimeKey, now.toString());
+
+    renderFamousGames(results);
+  }
+
+  function renderFamousGames(dataList) {
+    const famousGamesContainer = document.getElementById('famous-games-list');
+    if (!famousGamesContainer) return;
+    famousGamesContainer.innerHTML = "";
+
+    dataList.forEach(g => {
+      const btn = document.createElement('button');
+      btn.className = "wishlist-item-btn";
+      btn.innerHTML = `
+        <span class="wishlist-item-title" style="font-weight:600;">${g.name}</span>
+        <span class="wishlist-item-price">${g.priceText}</span>
+      `;
+      btn.addEventListener('click', () => {
+        inputDbSearch.value = g.name;
+        searchSteamDBApp();
+        inputDbSearch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        inputDbSearch.focus();
+      });
+      famousGamesContainer.appendChild(btn);
+    });
   }
 
   async function searchSteamDBApp() {
@@ -805,11 +961,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sync select dropdowns with state UAH default
   selectSteamCurrency.value = `${state.currencyCode}|${state.currencySymbol}|${state.currencyDecimals}`;
 
-  // Set initial inputs
-  inputGamePrice.value = state.gamePrice.toFixed(state.currencyDecimals);
-  inputWalletBalance.value = state.walletBalance.toFixed(state.currencyDecimals);
+  // Set initial inputs with comma formatting
+  inputGamePrice.value = state.gamePrice.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals, maximumFractionDigits: state.currencyDecimals });
+  inputWalletBalance.value = state.walletBalance.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals, maximumFractionDigits: state.currencyDecimals });
   inputKeyBuyPrice.value = state.keyBuyPrice.toLocaleString();
-  inputKeySellPrice.value = state.keySellPrice.toFixed(state.currencyDecimals);
+  inputKeySellPrice.value = state.keySellPrice.toLocaleString(undefined, { minimumFractionDigits: state.currencyDecimals, maximumFractionDigits: state.currencyDecimals });
 
   updateCalculations();
+
+  // Load live key price & preloaded famous games in background on startup
+  fetchLiveTF2KeyPrice();
+  loadFamousGamesSuggestions();
 });

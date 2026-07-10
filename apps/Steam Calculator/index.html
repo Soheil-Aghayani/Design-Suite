@@ -72,7 +72,7 @@
             <div class="input-row">
               <div class="input-field-wrapper flex-2">
                 <label for="input-game-price">Game Price on Steam</label>
-                <input type="number" id="input-game-price" class="text-input" value="1200.00" step="0.01" min="0">
+                <input type="text" id="input-game-price" class="text-input" value="1,200.00">
               </div>
               <div class="input-field-wrapper flex-1">
                 <label for="select-steam-currency">Currency</label>
@@ -89,11 +89,14 @@
 
             <div class="input-field-wrapper">
               <label for="input-wallet-balance">Existing Steam Wallet Balance</label>
-              <input type="number" id="input-wallet-balance" class="text-input" value="0.00" step="0.01" min="0">
+              <input type="text" id="input-wallet-balance" class="text-input" value="0.00">
             </div>
 
             <div class="input-field-wrapper">
-              <label for="input-key-buy-price">TF2 Key Buy Price outside Steam (in Tomans)</label>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label for="input-key-buy-price" style="margin-bottom: 0;">TF2 Key Buy Price outside Steam (in Tomans)</label>
+                <a href="https://torob.com/p/91d012a1-35ed-4fd6-9be3-46a00f97074d/%DA%A9%D9%84%DB%8C%D8%AF-%D8%A8%D8%A7%D8%B2%DB%8C-team-fortress-2-tf2/" target="_blank" style="font-size: 11px; color: var(--accent-color); text-decoration: none; font-weight: 600;">Buy on Torob ↗</a>
+              </div>
               <div class="input-with-addon">
                 <input type="text" id="input-key-buy-price" class="text-input" value="110,000">
                 <span class="input-addon">Toman</span>
@@ -102,7 +105,7 @@
 
             <div class="input-field-wrapper">
               <label for="input-key-sell-price">Steam Market Key Listing Price (what Buyer pays)</label>
-              <input type="number" id="input-key-sell-price" class="text-input" value="105.00" step="0.5" min="0.05">
+              <input type="text" id="input-key-sell-price" class="text-input" value="105.00">
             </div>
 
             <!-- Live Rounding Feedback -->
@@ -186,6 +189,14 @@
 
         <div class="db-search-results" id="db-search-results-list" style="display: none;">
           <!-- Loaded dynamically -->
+        </div>
+
+        <!-- Famous Games Live Suggestions -->
+        <div class="famous-games-container" style="margin-top: 16px; border-top: 1px dashed var(--card-border); padding-top: 16px;">
+          <span class="db-editions-title" style="margin-bottom: 8px; display: block; font-weight: 600;">🔥 Popular Games (Live Prices):</span>
+          <div id="famous-games-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+            <!-- Preloaded famous games will render here -->
+          </div>
         </div>
       </section>
     </main>
