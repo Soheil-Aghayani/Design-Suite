@@ -136,6 +136,47 @@ document.addEventListener('DOMContentLoaded', () => {
   let isSpacePressed = false;
   let isFirstRender = true;
   
+  // --- Mobile Sidebar Toggles ---
+  const btnToggleLeft = document.getElementById('btn-toggle-left');
+  const btnToggleRight = document.getElementById('btn-toggle-right');
+  const mobileSidebarOverlay = document.getElementById('mobile-sidebar-overlay');
+  const leftToolbar = document.querySelector('.left-toolbar');
+  const rightSidebar = document.querySelector('.right-sidebar');
+
+  if (btnToggleLeft && btnToggleRight && mobileSidebarOverlay) {
+    const closeMobileDrawers = () => {
+      leftToolbar.classList.remove('open');
+      rightSidebar.classList.remove('open');
+      mobileSidebarOverlay.style.display = 'none';
+    };
+
+    btnToggleLeft.addEventListener('click', (e) => {
+      e.stopPropagation();
+      leftToolbar.classList.toggle('open');
+      rightSidebar.classList.remove('open');
+      mobileSidebarOverlay.style.display = leftToolbar.classList.contains('open') ? 'block' : 'none';
+    });
+
+    btnToggleRight.addEventListener('click', (e) => {
+      e.stopPropagation();
+      rightSidebar.classList.toggle('open');
+      leftToolbar.classList.remove('open');
+      mobileSidebarOverlay.style.display = rightSidebar.classList.contains('open') ? 'block' : 'none';
+    });
+
+    mobileSidebarOverlay.addEventListener('click', closeMobileDrawers);
+
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768) {
+        if (!leftToolbar.contains(e.target) && !rightSidebar.contains(e.target)
+          && e.target !== btnToggleLeft && e.target !== btnToggleRight) {
+          closeMobileDrawers();
+        }
+      }
+    });
+  }
+  // --- End Mobile Toggles ---
+  
   // Undo/Redo History Stack
   let historyStack = [];
   let historyPointer = -1;

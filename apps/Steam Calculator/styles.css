@@ -812,3 +812,19 @@ select.text-input {
   text-transform: uppercase;
 }
 
+.help-link {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent-color);
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+  margin-left: 4px;
+}
+
+.help-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+

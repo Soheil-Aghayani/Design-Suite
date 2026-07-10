@@ -734,3 +734,101 @@ input[type="range"]::-webkit-slider-thumb:hover {
   border-color: var(--text-secondary);
 }
 
+/* ===========================
+   MOBILE RESPONSIVE LAYOUT
+   =========================== */
+
+/* Mobile Floating Toggle Buttons */
+.mobile-toggle-btn {
+  display: none;
+  position: absolute;
+  top: 20px;
+  z-index: 99;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-normal);
+}
+
+.mobile-toggle-btn:hover {
+  background-color: var(--accent-bg-subtle);
+}
+
+.mobile-toggle-btn.left-toggle { left: 16px; }
+.mobile-toggle-btn.right-toggle { right: 16px; }
+
+/* Backdrop overlay for closing open drawers */
+.sidebar-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.35);
+  z-index: 90;
+}
+
+@media (max-width: 768px) {
+  .mobile-toggle-btn {
+    display: flex;
+  }
+
+  /* Narrow left toolbar slides off to the left */
+  .left-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    transform: translateX(-100%);
+    transition: transform var(--transition-normal);
+    z-index: 200;
+    box-shadow: none;
+  }
+
+  .left-toolbar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Right inspector sidebar slides off to the right */
+  .right-sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    transform: translateX(100%);
+    transition: transform var(--transition-normal);
+    z-index: 200;
+    max-width: 90vw;
+    overflow-y: auto;
+    box-shadow: none;
+  }
+
+  .right-sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Canvas takes full width */
+  .canvas-container {
+    flex: 1;
+    width: 100vw;
+  }
+
+  .canvas-viewport {
+    padding: 20px 8px;
+  }
+
+  /* Scale preview to fit narrow screens */
+  #preview-container svg {
+    max-width: 90vw;
+    height: auto;
+  }
+}
+
+
