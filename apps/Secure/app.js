@@ -408,4 +408,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial Run
   generateCaptcha();
+
+  // ── Mobile sidebar toggle wiring ──
+  const _btnToggleLeft = document.getElementById('btn-toggle-left');
+  const _btnToggleRight = document.getElementById('btn-toggle-right');
+  const _mobileSidebarOverlay = document.getElementById('mobile-sidebar-overlay');
+  const _leftToolbar = document.querySelector('.left-toolbar');
+  const _rightSidebar = document.querySelector('.right-sidebar');
+
+  if (_btnToggleLeft && _btnToggleRight && _mobileSidebarOverlay) {
+    _btnToggleLeft.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _leftToolbar.classList.toggle('open');
+      _rightSidebar.classList.remove('open');
+      _mobileSidebarOverlay.style.display = _leftToolbar.classList.contains('open') ? 'block' : 'none';
+    });
+    _btnToggleRight.addEventListener('click', (e) => {
+      e.stopPropagation();
+      _rightSidebar.classList.toggle('open');
+      _leftToolbar.classList.remove('open');
+      _mobileSidebarOverlay.style.display = _rightSidebar.classList.contains('open') ? 'block' : 'none';
+    });
+    _mobileSidebarOverlay.addEventListener('click', () => {
+      _leftToolbar.classList.remove('open');
+      _rightSidebar.classList.remove('open');
+      _mobileSidebarOverlay.style.display = 'none';
+    });
+  }
+
+  // ── Nav pill: hub vs standalone ──
+  const _isEmbedded = window.self !== window.top;
+  const _btnNavHub = document.getElementById('btn-nav-hub');
+  const _btnNavStandalone = document.getElementById('btn-nav-standalone');
+  if (_isEmbedded) {
+    if (_btnNavHub) {
+      _btnNavHub.style.display = 'flex';
+      _btnNavHub.addEventListener('click', () => {
+        try {
+          window.parent.postMessage({ action: 'hub_navigate', tool: 'home' }, '*');
+        } catch (e) {
+          window.parent.location.href = '../../index.html';
+        }
+      });
+    }
+    if (_btnNavStandalone) {
+      _btnNavStandalone.style.display = 'flex';
+      _btnNavStandalone.addEventListener('click', () => {
+        window.open(window.location.href, '_blank');
+      });
+    }
+  }
+
 });

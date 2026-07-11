@@ -1003,4 +1003,28 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load live key price & preloaded famous games in background on startup
   fetchLiveTF2KeyPrice();
   loadFamousGamesSuggestions();
+
+  // ── Nav pill: hub vs standalone ──
+  const _isEmbedded = window.self !== window.top;
+  const _btnNavHub = document.getElementById('btn-nav-hub');
+  const _btnNavStandalone = document.getElementById('btn-nav-standalone');
+  if (_isEmbedded) {
+    if (_btnNavHub) {
+      _btnNavHub.style.display = 'flex';
+      _btnNavHub.addEventListener('click', () => {
+        try {
+          window.parent.postMessage({ action: 'hub_navigate', tool: 'home' }, '*');
+        } catch (e) {
+          window.parent.location.href = '../../index.html';
+        }
+      });
+    }
+    if (_btnNavStandalone) {
+      _btnNavStandalone.style.display = 'flex';
+      _btnNavStandalone.addEventListener('click', () => {
+        window.open(window.location.href, '_blank');
+      });
+    }
+  }
+
 });
