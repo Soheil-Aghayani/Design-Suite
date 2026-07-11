@@ -761,6 +761,19 @@
               <span>Steam key Arbitrage</span>
             </a>
           </li>
+
+          <li>
+            <a class="nav-item" id="nav-archive" data-tool="archive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+                <polyline points="7.5 19.79 7.5 14.67 12 12.01 16.5 14.67 16.5 19.79"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+              <span>Archive Studio</span>
+            </a>
+          </li>
         </ul>
       </nav>
 
@@ -1125,6 +1138,30 @@
               </svg>
             </div>
           </div>
+
+          <!-- Card: Archive Studio -->
+          <div class="tool-card" data-tool="archive" style="--accent-gradient: linear-gradient(135deg, #0284c7, #0369a1);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
+                <polyline points="7.5 19.79 7.5 14.67 12 12.01 16.5 14.67 16.5 19.79"/>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                <line x1="12" y1="22.08" x2="12" y2="12"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Archive Studio (Zip)</h2>
+              <p class="card-desc" style="margin-top: 8px;">Compress multiple files and folder structures into standard ZIP archives, or browse, preview, and extract existing ZIP files directly inside your browser.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Archive Studio</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1170,7 +1207,8 @@
         'colorstudio': 'apps/Color Studio/index.html',
         'mesh': 'apps/Mesh/index.html',
         'typo': 'apps/Typography/index.html',
-        'steamcalc': 'apps/Steam Calculator/index.html'
+        'steamcalc': 'apps/Steam Calculator/index.html',
+        'archive': 'apps/Archive Studio/index.html'
       };
 
       const toolDisplayNames = {
@@ -1187,7 +1225,8 @@
         'colorstudio': 'Color Studio - Palette & Contrast Workspace',
         'mesh': 'Liquid Mesh Gradient Builder',
         'typo': 'Typography Pairer & Playground',
-        'steamcalc': 'Steam key Arbitrage Calculator'
+        'steamcalc': 'Steam key Arbitrage Calculator',
+        'archive': 'Archive Studio - Zip & Compression Suite'
       };
 
       let activeToolKey = 'home';
