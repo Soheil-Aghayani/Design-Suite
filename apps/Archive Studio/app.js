@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const infoZipSize = document.getElementById('info-zip-size');
   const infoZipStats = document.getElementById('info-zip-stats');
   const btnExtractAll = document.getElementById('btn-extract-all');
+  const btnConvertZip = document.getElementById('btn-convert-zip');
 
   // Packer Elements
   const dropzonePacker = document.getElementById('dropzone-packer');
@@ -155,6 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadedZip = filesObj;
       renderArchiveTree(filesObj);
       btnExtractAll.disabled = false;
+      btnConvertZip.disabled = false;
     } catch (err) {
       console.error(err);
       showToast('Error extracting archive: ' + err.message);
@@ -374,6 +376,52 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('All files successfully extracted');
   });
 
+  // Convert loaded archive to ZIP format directly
+  btnConvertZip.addEventListener('click', async () => {
+    if (!loadedZip) return;
+
+    // Collect all files preserving directory hierarchy paths
+    function getFilesWithPath(obj, path = '') {
+      const results = [];
+      Object.keys(obj).forEach(key => {
+        const val = obj[key];
+        const currentPath = path ? `${path}/${key}` : key;
+        if (val instanceof File) {
+          results.push({ file: val, path: currentPath });
+        } else if (typeof val === 'object' && val !== null) {
+          results.push(...getFilesWithPath(val, currentPath));
+        }
+      });
+      return results;
+    }
+
+    const items = getFilesWithPath(loadedZip);
+    if (items.length === 0) {
+      showToast('Archive is empty');
+      return;
+    }
+
+    btnConvertZip.disabled = true;
+    showToast(`Converting ${items.length} files to ZIP...`);
+
+    try {
+      const zip = new window.JSZip();
+      items.forEach(item => {
+        zip.file(item.path, item.file);
+      });
+
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      let outputName = loadedZipFilename.split('.').slice(0, -1).join('.') + '.zip';
+      downloadBlob(blob, outputName);
+      showToast('Archive successfully converted to ZIP!');
+    } catch (err) {
+      console.error(err);
+      showToast('Error converting archive to ZIP: ' + err.message);
+    } finally {
+      btnConvertZip.disabled = false;
+    }
+  });
+
   // Modal close trigger
   btnCloseModal.addEventListener('click', () => {
     previewModal.classList.remove('open');
@@ -391,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
     infoZipSize.value = '-';
     infoZipStats.value = '-';
     btnExtractAll.disabled = true;
+    btnConvertZip.disabled = true;
     treeContainer.style.display = 'none';
     dropzoneExtractor.style.display = 'flex';
     fileInputExtractor.value = '';
