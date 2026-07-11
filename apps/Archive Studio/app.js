@@ -1,3 +1,9 @@
+import { Archive } from 'https://unpkg.com/libarchive.js@2.0.2/dist/libarchive.js';
+
+Archive.init({
+  workerUrl: 'https://unpkg.com/libarchive.js@2.0.2/dist/worker-bundle.js'
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   // Theme management
   function syncTheme() {
@@ -112,22 +118,24 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ----------------------------------------------------
-  // --- ZIP EXTRACTOR LOGIC ---
+  // --- ARCHIVE EXTRACTOR LOGIC (using WASM libarchive.js) ---
   // ----------------------------------------------------
 
   dropzoneExtractor.addEventListener('click', () => fileInputExtractor.click());
   fileInputExtractor.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-      handleZipFile(e.target.files[0]);
+      handleArchiveFile(e.target.files[0]);
     }
   });
 
   // Drag and drop events for extractor
-  setupDragAndDrop(dropzoneExtractor, handleZipFile);
+  setupDragAndDrop(dropzoneExtractor, handleArchiveFile);
 
-  function handleZipFile(file) {
-    if (!file.name.endsWith('.zip')) {
-      showToast('Error: Please select a valid .zip file');
+  async function handleArchiveFile(file) {
+    const supportedExtensions = ['.zip', '.rar', '.7z', '.tar', '.gz', '.tgz'];
+    const isSupported = supportedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    if (!isSupported) {
+      showToast('Error: File format not recognized as supported archive');
       return;
     }
 
@@ -137,75 +145,57 @@ document.addEventListener('DOMContentLoaded', () => {
     infoZipStats.value = 'Analyzing archive...';
 
     // Show loading state
-    treeContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Loading ZIP archive...</div>';
+    treeContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Extracting archive via WebAssembly...</div>';
     treeContainer.style.display = 'block';
     dropzoneExtractor.style.display = 'none';
 
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      JSZip.loadAsync(e.target.result)
-        .then(function(zip) {
-          loadedZip = zip;
-          renderZipTree(zip);
-          btnExtractAll.disabled = false;
-        })
-        .catch(function(err) {
-          console.error(err);
-          showToast('Error loading ZIP file');
-          resetExtractor();
-        });
-    };
-    reader.readAsArrayBuffer(file);
+    try {
+      const archive = await Archive.open(file);
+      const filesObj = await archive.extractFiles();
+      loadedZip = filesObj;
+      renderArchiveTree(filesObj);
+      btnExtractAll.disabled = false;
+    } catch (err) {
+      console.error(err);
+      showToast('Error extracting archive: ' + err.message);
+      resetExtractor();
+    }
   }
 
-  // Walk zip file and build nested tree representation
-  function renderZipTree(zip) {
-    const root = { name: 'root', type: 'dir', children: {}, path: '' };
-    let fileCount = 0;
-    let folderCount = 0;
-
-    zip.forEach((relativePath, zipEntry) => {
-      const parts = relativePath.split('/');
-      // Remove trailing empty elements for directories
-      if (parts[parts.length - 1] === '') {
-        parts.pop();
-      }
-      
-      let current = root;
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (!part) continue;
-        const isLast = (i === parts.length - 1);
-        const type = (isLast && !zipEntry.dir) ? 'file' : 'dir';
-        
-        if (!current.children[part]) {
-          current.children[part] = {
-            name: part,
-            type: type,
-            children: {},
-            path: relativePath,
-            entry: isLast ? zipEntry : null
-          };
-          if (type === 'file') fileCount++;
-          else folderCount++;
+  // Helper to recursively count files and folders
+  function countFilesAndFolders(obj) {
+    let files = 0;
+    let folders = 0;
+    function recurse(o) {
+      Object.keys(o).forEach(key => {
+        if (o[key] instanceof File) {
+          files++;
+        } else if (typeof o[key] === 'object' && o[key] !== null) {
+          folders++;
+          recurse(o[key]);
         }
-        current = current.children[part];
-      }
-    });
+      });
+    }
+    recurse(obj);
+    return { files, folders };
+  }
 
-    infoZipStats.value = `${fileCount} Files, ${folderCount} Folders`;
+  // Walk extracted files object and build nested tree representation
+  function renderArchiveTree(filesObj) {
+    const stats = countFilesAndFolders(filesObj);
+    infoZipStats.value = `${stats.files} Files, ${stats.folders} Folders`;
     treeContainer.innerHTML = '';
     
-    // Render the tree root children
-    renderTreeNode(treeContainer, root, 0);
+    // Render the tree root
+    renderLibArchiveTree(treeContainer, filesObj, 0);
   }
 
-  // Recursive tree renderer
-  function renderTreeNode(parentElement, node, depth) {
-    const sortedKeys = Object.keys(node.children).sort((a, b) => {
+  // Recursive tree renderer for libarchive files object structure
+  function renderLibArchiveTree(parentElement, folderObj, depth, parentPath = '') {
+    const sortedKeys = Object.keys(folderObj).sort((a, b) => {
       // Put folders before files
-      const aType = node.children[a].type;
-      const bType = node.children[b].type;
+      const aType = (folderObj[a] instanceof File) ? 'file' : 'dir';
+      const bType = (folderObj[b] instanceof File) ? 'file' : 'dir';
       if (aType !== bType) {
         return aType === 'dir' ? -1 : 1;
       }
@@ -213,14 +203,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     sortedKeys.forEach(key => {
-      const child = node.children[key];
+      const val = folderObj[key];
+      const isFile = (val instanceof File);
+      const relativePath = parentPath ? `${parentPath}/${key}` : key;
+      
       const row = document.createElement('div');
       row.className = 'tree-row';
       row.style.paddingLeft = `${12 + (depth * 20)}px`;
 
       // Icons based on type
       let iconSvg = '';
-      if (child.type === 'dir') {
+      if (!isFile) {
         iconSvg = `
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
@@ -238,10 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add HTML structure
       row.innerHTML = `
         <span class="tree-icon">${iconSvg}</span>
-        <span class="tree-name">${child.name}</span>
-        <span class="tree-size">${child.type === 'file' && child.entry ? formatSize(child.entry._data.uncompressedSize || 0) : ''}</span>
+        <span class="tree-name">${key}</span>
+        <span class="tree-size">${isFile ? formatSize(val.size) : ''}</span>
         <div class="tree-actions">
-          ${child.type === 'file' ? `
+          ${isFile ? `
             <button class="tree-action-btn btn-view" title="Preview File">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -262,18 +255,17 @@ document.addEventListener('DOMContentLoaded', () => {
       parentElement.appendChild(row);
 
       // Expand/Collapse folder or Preview/Download file
-      if (child.type === 'dir') {
+      if (!isFile) {
         const subContainer = document.createElement('div');
         subContainer.className = 'tree-sub-container';
         parentElement.appendChild(subContainer);
         
         let expanded = true;
         
-        // Initial render of child nodes
-        renderTreeNode(subContainer, child, depth + 1);
+        // Render sub nodes
+        renderLibArchiveTree(subContainer, val, depth + 1, relativePath);
 
         row.addEventListener('click', (e) => {
-          // Ignore if clicked on row actions
           if (e.target.closest('.tree-actions')) return;
           
           expanded = !expanded;
@@ -281,21 +273,20 @@ document.addEventListener('DOMContentLoaded', () => {
           row.querySelector('.tree-icon').style.opacity = expanded ? '1' : '0.5';
         });
       } else {
-        // Wire up file action buttons
         const btnView = row.querySelector('.btn-view');
         const btnDownload = row.querySelector('.btn-download');
 
-        btnView.addEventListener('click', () => previewZipFile(child.entry));
-        btnDownload.addEventListener('click', () => downloadZipFile(child.entry));
-        row.addEventListener('dblclick', () => previewZipFile(child.entry));
+        btnView.addEventListener('click', () => previewFileObj(val));
+        btnDownload.addEventListener('click', () => downloadFileObj(val));
+        row.addEventListener('dblclick', () => previewFileObj(val));
       }
     });
   }
 
-  // Preview file inside ZIP
-  function previewZipFile(zipEntry) {
-    const ext = zipEntry.name.split('.').pop().toLowerCase();
-    previewFilename.textContent = zipEntry.name;
+  // Preview file inside extracted object
+  function previewFileObj(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    previewFilename.textContent = file.name;
     previewBody.innerHTML = '<div style="text-align: center; color: var(--text-secondary);">Loading preview...</div>';
     previewModal.classList.add('open');
 
@@ -303,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const imgExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico'];
 
     if (textExtensions.includes(ext)) {
-      zipEntry.async('string').then(content => {
+      file.text().then(content => {
         const textPre = document.createElement('pre');
         textPre.className = 'text-preview';
         textPre.textContent = content;
@@ -313,19 +304,20 @@ document.addEventListener('DOMContentLoaded', () => {
         previewBody.innerHTML = `<div style="color: var(--danger-color);">Error rendering preview: ${err.message}</div>`;
       });
     } else if (imgExtensions.includes(ext)) {
-      // SVG can be treated as inline or as base64. Let's load as base64 for unified handling
-      const format = ext === 'svg' ? 'svg+xml' : ext;
-      zipEntry.async('base64').then(base64 => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'img-preview';
         const img = document.createElement('img');
-        img.src = `data:image/${format};base64,${base64}`;
+        img.src = e.target.result;
         wrapper.appendChild(img);
         previewBody.innerHTML = '';
         previewBody.appendChild(wrapper);
-      }).catch(err => {
-        previewBody.innerHTML = `<div style="color: var(--danger-color);">Error loading image: ${err.message}</div>`;
-      });
+      };
+      reader.onerror = (err) => {
+        previewBody.innerHTML = `<div style="color: var(--danger-color);">Error loading image: ${err}</div>`;
+      };
+      reader.readAsDataURL(file);
     } else {
       previewBody.innerHTML = `
         <div style="text-align: center; padding: 40px 20px; color: var(--text-secondary);">
@@ -339,32 +331,33 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
       document.getElementById('btn-modal-download').addEventListener('click', () => {
-        downloadZipFile(zipEntry);
+        downloadFileObj(file);
       });
     }
   }
 
-  // Download individual file from ZIP
-  function downloadZipFile(zipEntry) {
-    showToast(`Extracting ${zipEntry.name.split('/').pop()}...`);
-    zipEntry.async('blob').then(blob => {
-      downloadBlob(blob, zipEntry.name.split('/').pop());
-    }).catch(err => {
-      console.error(err);
-      showToast('Error extracting file');
-    });
+  // Download individual file
+  function downloadFileObj(file) {
+    showToast(`Downloading ${file.name}...`);
+    downloadBlob(file, file.name);
   }
 
-  // Extract all files sequentially
+  // Extract all files (sequential download)
   btnExtractAll.addEventListener('click', async () => {
     if (!loadedZip) return;
     
+    // Collect all File objects recursively
     const files = [];
-    loadedZip.forEach((relativePath, zipEntry) => {
-      if (!zipEntry.dir) {
-        files.push(zipEntry);
-      }
-    });
+    function collect(o) {
+      Object.keys(o).forEach(key => {
+        if (o[key] instanceof File) {
+          files.push(o[key]);
+        } else if (typeof o[key] === 'object' && o[key] !== null) {
+          collect(o[key]);
+        }
+      });
+    }
+    collect(loadedZip);
 
     if (files.length === 0) {
       showToast('Archive is empty');
@@ -373,17 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showToast(`Extracting all ${files.length} files...`);
     
-    // Sequential download with a minor delay so browser doesn't flag it as pop-up spam
     for (let i = 0; i < files.length; i++) {
-      const fileEntry = files[i];
-      try {
-        const blob = await fileEntry.async('blob');
-        downloadBlob(blob, fileEntry.name.split('/').pop());
-        // Minor delay
-        await new Promise(resolve => setTimeout(resolve, 250));
-      } catch (err) {
-        console.error('Error downloading:', fileEntry.name, err);
-      }
+      const f = files[i];
+      downloadBlob(f, f.name);
+      await new Promise(resolve => setTimeout(resolve, 250));
     }
     showToast('All files successfully extracted');
   });
@@ -427,7 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function stageFiles(filesList) {
     for (let i = 0; i < filesList.length; i++) {
       const file = filesList[i];
-      // Avoid staging duplicate files based on name + path
       const path = file.webkitRelativePath || file.name;
       const isDuplicate = stagedFiles.some(f => (f.path === path && f.file.size === file.size));
       
@@ -505,16 +490,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const compression = selectCompression.value;
 
-    // Show progress container
     packProgress.style.display = 'flex';
     btnPackGenerate.disabled = true;
     progressState.textContent = 'Generating zip...';
     progressPercent.textContent = '0%';
     progressBarFill.style.width = '0%';
 
-    const zip = new JSZip();
+    const zip = new window.JSZip();
     stagedFiles.forEach(staged => {
-      // JSZip automatically creates intermediate directories when a relative path is passed
       zip.file(staged.path, staged.file);
     });
 

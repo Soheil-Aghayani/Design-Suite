@@ -75,7 +75,7 @@
           <!-- View 1: Extractor -->
           <div class="view-panel active" id="view-extractor">
             <div class="panel-header">
-              <span class="panel-title">ZIP Archive Extractor</span>
+              <span class="panel-title">Multi-Format Archive Extractor</span>
             </div>
             <div class="panel-content">
               <!-- Dropzone -->
@@ -88,9 +88,9 @@
                     <line x1="12" y1="10" x2="12" y2="16"/>
                   </svg>
                 </div>
-                <span class="dropzone-text">Drag & drop a ZIP archive here, or click to browse</span>
-                <span class="dropzone-subtext">Supported format: .zip</span>
-                <input type="file" id="file-input-extractor" accept=".zip" style="display: none;">
+                <span class="dropzone-text">Drag & drop an archive here, or click to browse</span>
+                <span class="dropzone-subtext">Supported formats: .zip, .rar, .7z, .tar, .tar.gz, .tgz</span>
+                <input type="file" id="file-input-extractor" accept=".zip,.rar,.7z,.tar,.tar.gz,.tgz" style="display: none;">
               </div>
               
               <!-- File list tree (initially hidden) -->
@@ -242,6 +242,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
