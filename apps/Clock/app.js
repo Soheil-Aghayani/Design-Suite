@@ -811,8 +811,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function centerCanvas() {
     const viewRect = viewport.getBoundingClientRect();
     const size = 520;
-    zoomScale = 1.0;
-    panX = (viewRect.width - size * zoomScale) / 2;
+    // Compute a responsive scale so the clock always fits comfortably in the viewport
+    const paddingFactor = 0.88; // leave 12% breathing room
+    const fitScale = Math.min(
+      (viewRect.width * paddingFactor) / size,
+      (viewRect.height * paddingFactor) / size
+    );
+    // Clamp: don't enlarge beyond 1× on desktop, never shrink below 0.25×
+    zoomScale = Math.max(0.25, Math.min(1.0, fitScale));
+
+    // Center the (scaled) container in the viewport
+    panX = (viewRect.width  - size * zoomScale) / 2;
     panY = (viewRect.height - size * zoomScale) / 2;
     applyTransform();
   }
@@ -1559,7 +1568,36 @@ document.addEventListener('DOMContentLoaded', () => {
     historyPointer = 0;
     updateHistoryButtons();
 
-    // Center canvas viewport and track container layout sizes
+    // 4. Wire up the floating navigation pill
+    // Detect whether we are inside the hub iframe or running standalone
+    const isEmbedded = window.self !== window.top;
+    const btnNavHub = document.getElementById('btn-nav-hub');
+    const btnNavStandalone = document.getElementById('btn-nav-standalone');
+
+    if (isEmbedded) {
+      // Inside the hub: show "← Hub" and "Standalone" buttons
+      if (btnNavHub) {
+        btnNavHub.style.display = 'flex';
+        btnNavHub.addEventListener('click', () => {
+          try {
+            // Tell the parent hub to switch back to home
+            window.parent.postMessage({ action: 'hub_navigate', tool: 'home' }, '*');
+          } catch (e) {
+            // Fallback: navigate the parent window to the hub root
+            window.parent.location.href = '../../index.html';
+          }
+        });
+      }
+      if (btnNavStandalone) {
+        btnNavStandalone.style.display = 'flex';
+        btnNavStandalone.addEventListener('click', () => {
+          window.open(window.location.href, '_blank');
+        });
+      }
+    }
+    // If standalone: no buttons shown (pill only shows app name label)
+
+    // 5. Center canvas viewport and track container layout sizes
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
         if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {

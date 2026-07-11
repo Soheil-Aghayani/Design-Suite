@@ -252,6 +252,8 @@ body {
   border-radius: 50%;
   box-shadow: var(--shadow-lg);
   transition: box-shadow var(--transition-normal);
+  /* Ensure pointer events work for the panning */
+  will-change: transform;
 }
 
 /* Dynamic Checkerboard Pattern */
@@ -267,8 +269,85 @@ body {
 
 #preview-container svg {
   display: block;
-  max-width: 90vh;
-  max-height: 90vh;
+  width: 520px;
+  height: 520px;
+}
+
+/* ── Floating Navigation Pill ── */
+.nav-pill {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 30px;
+  padding: 5px 8px 5px 12px;
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+  opacity: 0.7;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+}
+
+.nav-pill:hover {
+  opacity: 1;
+  box-shadow: var(--shadow-lg);
+}
+
+.nav-pill-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.nav-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.nav-pill-btn svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.nav-pill-btn.back-hub {
+  background-color: var(--accent-bg-subtle);
+  color: var(--text-primary);
+}
+
+.nav-pill-btn.back-hub:hover {
+  background-color: var(--text-primary);
+  color: var(--panel-bg);
+}
+
+.nav-pill-btn.open-standalone {
+  background-color: var(--accent-color);
+  color: var(--panel-bg);
+}
+
+.nav-pill-btn.open-standalone:hover {
+  background-color: var(--accent-hover);
 }
 
 /* Floating HUD status bar */
@@ -820,9 +899,21 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 9px;
   }
 
-  /* Make sure clock preview takes up full size and is centered */
-  #preview-container svg {
-    max-width: 80vw;
-    max-height: 50vh;
+  /* Nav pill goes top-right on mobile to avoid toggle button overlap */
+  .nav-pill {
+    top: 10px;
+    left: auto;
+    right: 10px;
+    transform: none;
+    padding: 4px 6px 4px 8px;
+  }
+
+  .nav-pill-label {
+    display: none;
+  }
+
+  .nav-pill-btn {
+    font-size: 10px;
+    padding: 4px 8px;
   }
 }

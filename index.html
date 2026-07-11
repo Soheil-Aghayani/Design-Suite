@@ -1255,6 +1255,16 @@
         }
       });
 
+      // Listen for navigation messages from embedded tool iframes (e.g. nav pill "Back to Hub")
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.action === 'hub_navigate') {
+          const target = e.data.tool || 'home';
+          if (target === 'home' || toolPaths[target]) {
+            switchTool(target);
+          }
+        }
+      });
+
       // UI theme manager (synchronizes dashboard light/dark variables)
       function setUITheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
