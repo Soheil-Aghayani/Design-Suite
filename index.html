@@ -525,6 +525,47 @@
       .tool-card {
         padding: 20px !important;
       }
+      .desktop-only {
+        display: none !important;
+      }
+    }
+
+    /* Breadcrumb styles */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .breadcrumb-item {
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: color var(--transition), opacity var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .breadcrumb-item:hover {
+      color: var(--accent-color);
+      opacity: 0.9;
+    }
+    .breadcrumb-separator {
+      color: var(--text-muted);
+      font-size: 12px;
+      user-select: none;
+    }
+
+    /* Hover effect for brand header */
+    .sidebar-header {
+      cursor: pointer;
+      transition: background-color var(--transition);
+    }
+    .sidebar-header:hover {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+    [data-theme="dark"] .sidebar-header:hover {
+      background-color: rgba(255, 255, 255, 0.02);
     }
   </style>
 </head>
@@ -544,7 +585,7 @@
 
     <!-- Left Switcher Dock -->
     <aside class="sidebar">
-      <div class="sidebar-header">
+      <div class="sidebar-header" id="sidebar-brand-header">
         <div class="logo-glow">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -571,7 +612,7 @@
           
           <div class="toolbar-divider"></div>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-clock" data-tool="clock">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -581,7 +622,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-flowchart" data-tool="flowchart">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="6" height="6" rx="1"/>
@@ -592,7 +633,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-plotter" data-tool="plotter">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M3 12h18M6 8v8M12 5v14M18 8v8"/>
@@ -601,7 +642,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-slicer" data-tool="slicer">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -611,7 +652,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-gradient" data-tool="gradient">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -631,7 +672,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-angle" data-tool="angle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -641,7 +682,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-percentbar" data-tool="percentbar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -651,7 +692,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-puzzle" data-tool="puzzle">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M11.75 3a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/>
@@ -674,7 +715,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-colorstudio" data-tool="colorstudio">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
@@ -686,18 +727,7 @@
             </a>
           </li>
 
-          <li>
-            <a class="nav-item" id="nav-gridcalc" data-tool="gridcalc">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="9" y1="3" x2="9" y2="21"/>
-                <line x1="15" y1="3" x2="15" y2="21"/>
-              </svg>
-              <span>Grid Calculator</span>
-            </a>
-          </li>
-
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-mesh" data-tool="mesh">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -707,7 +737,7 @@
             </a>
           </li>
 
-          <li>
+          <li class="desktop-only">
             <a class="nav-item" id="nav-typo" data-tool="typo">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <polyline points="4 7 4 4 20 4 20 7"/>
@@ -762,23 +792,20 @@
     <main class="main-viewport">
       <!-- Top header (Only when iframe is running) -->
       <div class="workspace-header" id="header-bar">
-        <span class="active-tool-title" id="active-tool-name">Workspace Portal</span>
-        <div class="workspace-actions">
-          <button class="btn-action" id="btn-back-hub">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-              <polyline points="15 18 9 12 15 6"/>
+        <div class="breadcrumb">
+          <span class="breadcrumb-item" id="breadcrumb-hub">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <rect x="3" y="3" width="7" height="9" rx="1"/>
+              <rect x="14" y="3" width="7" height="5" rx="1"/>
+              <rect x="14" y="12" width="7" height="9" rx="1"/>
+              <rect x="3" y="16" width="7" height="5" rx="1"/>
             </svg>
-            Back to Hub
-          </button>
-          <button class="btn-action accent" id="btn-launch-tab">
-            <span>Open standalone</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-              <polyline points="15 3 21 3 21 9"/>
-              <line x1="10" y1="14" x2="21" y2="3"/>
-            </svg>
-          </button>
+            Design Suite
+          </span>
+          <span class="breadcrumb-separator">/</span>
+          <span class="active-tool-title" id="active-tool-name">Workspace Portal</span>
         </div>
+        <div class="workspace-actions"></div>
       </div>
 
       <!-- Loading overlay indicator -->
@@ -796,7 +823,7 @@
 
         <div class="cards-grid">
           <!-- Card: Clock -->
-          <div class="tool-card" data-tool="clock" style="--accent-gradient: linear-gradient(135deg, #4f46e5, #06b6d4);">
+          <div class="tool-card desktop-only" data-tool="clock" style="--accent-gradient: linear-gradient(135deg, #4f46e5, #06b6d4);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -817,7 +844,7 @@
           </div>
 
           <!-- Card: Flowchart -->
-          <div class="tool-card" data-tool="flowchart" style="--accent-gradient: linear-gradient(135deg, #10b981, #059669);">
+          <div class="tool-card desktop-only" data-tool="flowchart" style="--accent-gradient: linear-gradient(135deg, #10b981, #059669);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="6" height="6" rx="1"/>
@@ -839,7 +866,7 @@
           </div>
 
           <!-- Card: Plotter v2 -->
-          <div class="tool-card" data-tool="plotter" style="--accent-gradient: linear-gradient(135deg, #ea580c, #d97706);">
+          <div class="tool-card desktop-only" data-tool="plotter" style="--accent-gradient: linear-gradient(135deg, #ea580c, #d97706);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M3 12h18M6 8v8M12 5v14M18 8v8"/>
@@ -859,7 +886,7 @@
           </div>
 
           <!-- Card: Slicer -->
-          <div class="tool-card" data-tool="slicer" style="--accent-gradient: linear-gradient(135deg, #ec4899, #f43f5e);">
+          <div class="tool-card desktop-only" data-tool="slicer" style="--accent-gradient: linear-gradient(135deg, #ec4899, #f43f5e);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -880,7 +907,7 @@
           </div>
 
           <!-- Card: Gradient Maker -->
-          <div class="tool-card" data-tool="gradient" style="--accent-gradient: linear-gradient(135deg, #6366f1, #3b82f6);">
+          <div class="tool-card desktop-only" data-tool="gradient" style="--accent-gradient: linear-gradient(135deg, #6366f1, #3b82f6);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -922,7 +949,7 @@
           </div>
 
           <!-- Card: Angle Drawer -->
-          <div class="tool-card" data-tool="angle" style="--accent-gradient: linear-gradient(135deg, #0d9488, #10b981);">
+          <div class="tool-card desktop-only" data-tool="angle" style="--accent-gradient: linear-gradient(135deg, #0d9488, #10b981);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -943,7 +970,7 @@
           </div>
 
           <!-- Card: Percentage Bar -->
-          <div class="tool-card" data-tool="percentbar" style="--accent-gradient: linear-gradient(135deg, #16a34a, #84cc16);">
+          <div class="tool-card desktop-only" data-tool="percentbar" style="--accent-gradient: linear-gradient(135deg, #16a34a, #84cc16);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -964,7 +991,7 @@
           </div>
 
           <!-- Card: Puzzle Designer -->
-          <div class="tool-card" data-tool="puzzle" style="--accent-gradient: linear-gradient(135deg, #eab308, #f97316);">
+          <div class="tool-card desktop-only" data-tool="puzzle" style="--accent-gradient: linear-gradient(135deg, #eab308, #f97316);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M11.75 3a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/>
@@ -1009,7 +1036,7 @@
           </div>
 
           <!-- Card: Color Studio -->
-          <div class="tool-card" data-tool="colorstudio" style="--accent-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);">
+          <div class="tool-card desktop-only" data-tool="colorstudio" style="--accent-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
@@ -1031,30 +1058,8 @@
             </div>
           </div>
 
-          <!-- Card: Grid Calculator -->
-          <div class="tool-card" data-tool="gridcalc" style="--accent-gradient: linear-gradient(135deg, #10b981, #059669);">
-            <div class="card-icon-box">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="9" y1="3" x2="9" y2="21"/>
-                <line x1="15" y1="3" x2="15" y2="21"/>
-              </svg>
-            </div>
-            <div>
-              <h2 class="card-title">Grid & Spacing Calculator</h2>
-              <p class="card-desc" style="margin-top: 8px;">Design column-grid layouts, calculate aspect ratios (16:9, 4:3, golden ratio) with responsive scaling boxes, and generate Tailwind-compatible spacing tables.</p>
-            </div>
-            <div class="card-footer">
-              <span>Launch Grid Calculator</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="5" y1="12" x2="19" y2="12"/>
-                <polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </div>
-          </div>
-
           <!-- Card: Mesh Gradient -->
-          <div class="tool-card" data-tool="mesh" style="--accent-gradient: linear-gradient(135deg, #f43f5e, #fb7185);">
+          <div class="tool-card desktop-only" data-tool="mesh" style="--accent-gradient: linear-gradient(135deg, #f43f5e, #fb7185);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
@@ -1075,7 +1080,7 @@
           </div>
 
           <!-- Card: Typography Playground -->
-          <div class="tool-card" data-tool="typo" style="--accent-gradient: linear-gradient(135deg, #6366f1, #a855f7);">
+          <div class="tool-card desktop-only" data-tool="typo" style="--accent-gradient: linear-gradient(135deg, #6366f1, #a855f7);">
             <div class="card-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <polyline points="4 7 4 4 20 4 20 7"/>
@@ -1143,8 +1148,8 @@
       const activeToolName = document.getElementById('active-tool-name');
       const frameSpinner = document.getElementById('frame-spinner');
       
-      const btnBackHub = document.getElementById('btn-back-hub');
-      const btnLaunchTab = document.getElementById('btn-launch-tab');
+      const breadcrumbHub = document.getElementById('breadcrumb-hub');
+      const sidebarBrandHeader = document.getElementById('sidebar-brand-header');
       
       const themeSwitcher = document.getElementById('theme-switcher');
       const themeSun = document.getElementById('theme-sun');
@@ -1163,7 +1168,6 @@
         'puzzle': 'apps/Puzzle/index.html',
         'convert': 'apps/Convert/index.html',
         'colorstudio': 'apps/Color Studio/index.html',
-        'gridcalc': 'apps/Grid/index.html',
         'mesh': 'apps/Mesh/index.html',
         'typo': 'apps/Typography/index.html',
         'steamcalc': 'apps/Steam Calculator/index.html'
@@ -1181,7 +1185,6 @@
         'puzzle': 'Jigsaw Puzzle Designer Workspace',
         'convert': 'Format Converter Suite',
         'colorstudio': 'Color Studio - Palette & Contrast Workspace',
-        'gridcalc': 'Grid & Aspect Spacing Workspace',
         'mesh': 'Liquid Mesh Gradient Builder',
         'typo': 'Typography Pairer & Playground',
         'steamcalc': 'Steam key Arbitrage Calculator'
@@ -1245,15 +1248,17 @@
         });
       });
 
-      btnBackHub.addEventListener('click', () => {
-        switchTool('home');
-      });
+      if (breadcrumbHub) {
+        breadcrumbHub.addEventListener('click', () => {
+          switchTool('home');
+        });
+      }
 
-      btnLaunchTab.addEventListener('click', () => {
-        if (activeToolKey !== 'home' && toolPaths[activeToolKey]) {
-          window.open(toolPaths[activeToolKey], '_blank');
-        }
-      });
+      if (sidebarBrandHeader) {
+        sidebarBrandHeader.addEventListener('click', () => {
+          switchTool('home');
+        });
+      }
 
       // Listen for navigation messages from embedded tool iframes (e.g. nav pill "Back to Hub")
       window.addEventListener('message', (e) => {

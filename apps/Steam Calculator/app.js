@@ -859,6 +859,37 @@ document.addEventListener('DOMContentLoaded', () => {
   inputSteamId.value = state.steamId;
   updateProfileStatusText();
 
+  // Save profile input fields automatically on change
+  inputSteamKey.addEventListener('input', () => {
+    const val = inputSteamKey.value.trim();
+    localStorage.setItem('steam_api_key', val);
+    state.steamApiKey = val;
+  });
+
+  inputSteamId.addEventListener('input', () => {
+    const val = inputSteamId.value.trim();
+    localStorage.setItem('steam_id', val);
+    state.steamId = val;
+    updateProfileStatusText();
+  });
+
+  // Save database search query automatically on change
+  inputDbSearch.addEventListener('input', () => {
+    localStorage.setItem('state_db_search', inputDbSearch.value.trim());
+  });
+
+  // Restore database search query and trigger search if populated
+  const savedSearch = localStorage.getItem('state_db_search') || '';
+  if (savedSearch) {
+    inputDbSearch.value = savedSearch;
+    if (savedSearch.length >= 2) {
+      // Trigger search in a timeout so DOM and dependencies are fully ready
+      setTimeout(() => {
+        searchSteamDBApp();
+      }, 100);
+    }
+  }
+
   // Toggle Panel
   profileToggle.addEventListener('click', () => {
     const isHidden = profileContent.style.display === 'none';
@@ -1004,27 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchLiveTF2KeyPrice();
   loadFamousGamesSuggestions();
 
-  // ── Nav pill: hub vs standalone ──
-  const _isEmbedded = window.self !== window.top;
-  const _btnNavHub = document.getElementById('btn-nav-hub');
-  const _btnNavStandalone = document.getElementById('btn-nav-standalone');
-  if (_isEmbedded) {
-    if (_btnNavHub) {
-      _btnNavHub.style.display = 'flex';
-      _btnNavHub.addEventListener('click', () => {
-        try {
-          window.parent.postMessage({ action: 'hub_navigate', tool: 'home' }, '*');
-        } catch (e) {
-          window.parent.location.href = '../../index.html';
-        }
-      });
-    }
-    if (_btnNavStandalone) {
-      _btnNavStandalone.style.display = 'flex';
-      _btnNavStandalone.addEventListener('click', () => {
-        window.open(window.location.href, '_blank');
-      });
-    }
-  }
+    // Navigation pill buttons logic removed safely
+
 
 });

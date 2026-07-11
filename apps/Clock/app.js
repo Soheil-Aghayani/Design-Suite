@@ -1568,33 +1568,8 @@ document.addEventListener('DOMContentLoaded', () => {
     historyPointer = 0;
     updateHistoryButtons();
 
-    // 4. Wire up the floating navigation pill
-    // Detect whether we are inside the hub iframe or running standalone
-    const isEmbedded = window.self !== window.top;
-    const btnNavHub = document.getElementById('btn-nav-hub');
-    const btnNavStandalone = document.getElementById('btn-nav-standalone');
+      // Navigation pill buttons logic removed safely
 
-    if (isEmbedded) {
-      // Inside the hub: show "← Hub" and "Standalone" buttons
-      if (btnNavHub) {
-        btnNavHub.style.display = 'flex';
-        btnNavHub.addEventListener('click', () => {
-          try {
-            // Tell the parent hub to switch back to home
-            window.parent.postMessage({ action: 'hub_navigate', tool: 'home' }, '*');
-          } catch (e) {
-            // Fallback: navigate the parent window to the hub root
-            window.parent.location.href = '../../index.html';
-          }
-        });
-      }
-      if (btnNavStandalone) {
-        btnNavStandalone.style.display = 'flex';
-        btnNavStandalone.addEventListener('click', () => {
-          window.open(window.location.href, '_blank');
-        });
-      }
-    }
     // If standalone: no buttons shown (pill only shows app name label)
 
     // 5. Center canvas viewport and track container layout sizes
