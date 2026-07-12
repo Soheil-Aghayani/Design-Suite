@@ -742,13 +742,52 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+
+  .left-toolbar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    padding: 8px 16px;
+    border-right: none;
+    border-top: 1px solid var(--panel-border);
+    justify-content: space-around;
+    order: 2; /* Push to bottom */
+  }
+
+  .toolbar-section {
+    flex-direction: row;
+    width: auto;
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: 24px;
+    margin: 0 8px;
+  }
+
+  .canvas-container {
+    order: 1;
+    height: 100%; /* Take remaining space */
+  }
+
   .canvas-viewport {
     flex-direction: column;
-    padding-top: 72px;
+    padding-top: 64px;
     overflow-y: auto;
+    height: 100%;
   }
+
+  .workspace-card.main-view {
+    min-height: 350px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+
   .workspace-card.side-inspector {
     max-width: 100%;
     height: auto;
+    border-left: none;
   }
 }

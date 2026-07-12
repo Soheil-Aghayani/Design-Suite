@@ -1,7 +1,7 @@
-import { Archive } from 'https://unpkg.com/libarchive.js@2.0.2/dist/libarchive.js';
+import { Archive } from './lib/libarchive.js';
 
 Archive.init({
-  workerUrl: 'https://unpkg.com/libarchive.js@2.0.2/dist/worker-bundle.js'
+  workerUrl: './lib/worker-bundle.js'
 });
 
 document.addEventListener('DOMContentLoaded', () => {
