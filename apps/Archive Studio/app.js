@@ -60,6 +60,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const previewBody = document.getElementById('preview-body');
   const btnCloseModal = document.getElementById('btn-close-modal');
 
+  // Loading Overlay
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const loadingText = document.getElementById('loading-text');
+
+  function showLoading(text) {
+    if(loadingText) loadingText.innerText = text;
+    if(loadingOverlay) loadingOverlay.style.display = 'flex';
+  }
+
+  function hideLoading() {
+    if(loadingOverlay) loadingOverlay.style.display = 'none';
+  }
+
   // Toast Notification
   const toastNotification = document.getElementById('toast-notification');
   const toastText = document.getElementById('toast-text');
@@ -146,7 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
     infoZipStats.value = 'Analyzing archive...';
 
     // Show loading state
-    treeContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">Extracting archive via WebAssembly...</div>';
+    treeContainer.innerHTML = `
+      <div style="padding: 40px 20px; text-align: center; color: var(--text-secondary); display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+        <img src="digging.gif" alt="Extracting..." style="max-width: 120px; margin-bottom: 24px; border-radius: 8px;">
+        <div style="font-weight: 500;">Extracting archive via WebAssembly...</div>
+      </div>
+    `;
     treeContainer.style.display = 'block';
     dropzoneExtractor.style.display = 'none';
 
@@ -366,14 +384,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    showToast(`Extracting all ${files.length} files...`);
+    showLoading(`Extracting all ${files.length} files...`);
     
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      downloadBlob(f, f.name);
-      await new Promise(resolve => setTimeout(resolve, 250));
-    }
-    showToast('All files successfully extracted');
+    // Allow UI to update before blocking loop
+    setTimeout(async () => {
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          downloadBlob(f, f.name);
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        showToast('All files successfully extracted');
+      } catch (err) {
+        showToast('Error extracting files: ' + err.message);
+      } finally {
+        hideLoading();
+      }
+    }, 50);
   });
 
   // Convert loaded archive to ZIP format directly
@@ -402,24 +429,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnConvertZip.disabled = true;
-    showToast(`Converting ${items.length} files to ZIP...`);
+    showLoading(`Converting ${items.length} files to ZIP...`);
 
-    try {
-      const zip = new window.JSZip();
-      items.forEach(item => {
-        zip.file(item.path, item.file);
-      });
+    setTimeout(async () => {
+      try {
+        const zip = new window.JSZip();
+        items.forEach(item => {
+          zip.file(item.path, item.file);
+        });
 
-      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-      let outputName = loadedZipFilename.split('.').slice(0, -1).join('.') + '.zip';
-      downloadBlob(blob, outputName);
-      showToast('Archive successfully converted to ZIP!');
-    } catch (err) {
-      console.error(err);
-      showToast('Error converting archive to ZIP: ' + err.message);
-    } finally {
-      btnConvertZip.disabled = false;
-    }
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        let outputName = loadedZipFilename.split('.').slice(0, -1).join('.') + '.zip';
+        downloadBlob(blob, outputName);
+        showToast('Archive successfully converted to ZIP!');
+      } catch (err) {
+        console.error(err);
+        showToast('Error converting archive to ZIP: ' + err.message);
+      } finally {
+        btnConvertZip.disabled = false;
+        hideLoading();
+      }
+    }, 50);
   });
 
   // Modal close trigger
