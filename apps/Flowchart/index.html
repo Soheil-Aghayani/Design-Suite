@@ -266,6 +266,22 @@
             </select>
           </div>
 
+          <div class="settings-row">
+            <label>Snap to Objects</label>
+            <div class="toggle-selector" id="snap-objects-selector">
+              <button class="selector-option" data-value="on">On</button>
+              <button class="selector-option active" data-value="off">Off</button>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <label>Snap Sens.</label>
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+              <input type="range" id="snap-sensitivity-slider" min="2" max="20" value="5" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
+              <span id="snap-sensitivity-val" style="font-size: 11px; font-family: var(--font-mono); color: var(--text-primary); width: 24px;">5px</span>
+            </div>
+          </div>
+
           <div class="settings-row" style="flex-direction: column; align-items: stretch; gap: 8px;">
             <label style="margin-bottom: 2px;">Template Library</label>
             <select id="template-library-select" class="text-input" style="padding: 8px 10px; font-size: 12px; height: auto; cursor: pointer;">

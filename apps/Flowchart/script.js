@@ -83,8 +83,10 @@ const DEFAULT_STATE = {
   gridEnabled: false,
   gridSize: 20,
   gridStyle: "dots",
+  snapToObjects: false,
+  snapSensitivity: 5,
   globalTheme: "classic",
-  animatedFlow: "on"
+  animatedFlow: "off"
 };
 
 // Predefined Flowchart Template Library
@@ -312,6 +314,18 @@ function executeUndo() {
   redoStack.push(JSON.stringify(state));
   state = JSON.parse(undoStack.pop());
   
+  // Clean coordinates
+  state.columns.forEach(col => {
+    col.nodes.forEach(validateAndClampNode);
+  });
+  
+  // Clear active drag/pan states
+  isPanning = false;
+  isDraggingNode = false;
+  isResizingNode = false;
+  dragNodeId = null;
+  resizeNodeId = null;
+  
   selectedNodeIds.clear();
   selectedNodeId = null;
   
@@ -325,6 +339,18 @@ function executeRedo() {
   if (redoStack.length === 0) return;
   undoStack.push(JSON.stringify(state));
   state = JSON.parse(redoStack.pop());
+  
+  // Clean coordinates
+  state.columns.forEach(col => {
+    col.nodes.forEach(validateAndClampNode);
+  });
+  
+  // Clear active drag/pan states
+  isPanning = false;
+  isDraggingNode = false;
+  isResizingNode = false;
+  dragNodeId = null;
+  resizeNodeId = null;
   
   selectedNodeIds.clear();
   selectedNodeId = null;
@@ -379,7 +405,17 @@ let nodeCoords = {};
 // Node dragging states
 let isDraggingNode = false;
 let dragNodeId = null;
-let dragNodeOffset = { x: 0, y: 0 };
+let dragStartCanvasPos = { x: 0, y: 0 };
+let dragOriginalPositions = {};
+let dragAxisLock = null; // 'x', 'y', or null
+let clipboardNodes = [];
+
+// Node resizing states
+let isResizingNode = false;
+let resizeNodeId = null;
+let resizeDirection = null;
+let resizeStartMouse = null;
+let resizeStartBounds = null;
 
 // 3. DOM Elements
 const svgEl = document.getElementById("flowchart-svg");
@@ -554,17 +590,29 @@ function getNodeY(nodeIndex, totalNodes) {
 }
 
 // Compute exit/entry interface points between two boxes, respecting custom anchors
-function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor = "auto") {
-  const nodeHalfW = NODE_WIDTH / 2;
-  const nodeHalfH = NODE_HEIGHT / 2;
+function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor = "auto", sourceNode = null, targetNode = null) {
+  const sx = Math.round(source.x);
+  const sy = Math.round(source.y);
+  const tx = Math.round(target.x);
+  const ty = Math.round(target.y);
+
+  const sW = Math.round(sourceNode ? (sourceNode.width || NODE_WIDTH) : NODE_WIDTH);
+  const sH = Math.round(sourceNode ? (sourceNode.height || NODE_HEIGHT) : NODE_HEIGHT);
+  const tW = Math.round(targetNode ? (targetNode.width || NODE_WIDTH) : NODE_WIDTH);
+  const tH = Math.round(targetNode ? (targetNode.height || NODE_HEIGHT) : NODE_HEIGHT);
+
+  const sHalfW = sW / 2;
+  const sHalfH = sH / 2;
+  const tHalfW = tW / 2;
+  const tHalfH = tH / 2;
 
   let resolvedSourceAnchor = sourceAnchor;
   let resolvedTargetAnchor = targetAnchor;
 
   // 1. Resolve auto anchors based on relative positions
   if (sourceAnchor === "auto" && targetAnchor === "auto") {
-    const dx = target.x - source.x;
-    const dy = target.y - source.y;
+    const dx = tx - sx;
+    const dy = ty - sy;
     if (Math.abs(dx) >= Math.abs(dy)) {
       resolvedSourceAnchor = dx > 0 ? "right" : "left";
       resolvedTargetAnchor = dx > 0 ? "left" : "right";
@@ -573,30 +621,30 @@ function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor
       resolvedTargetAnchor = dy > 0 ? "top" : "bottom";
     }
   } else if (sourceAnchor === "auto") {
-    let tx = target.x;
-    let ty = target.y;
-    if (targetAnchor === "top") ty -= nodeHalfH;
-    else if (targetAnchor === "bottom") ty += nodeHalfH;
-    else if (targetAnchor === "left") tx -= nodeHalfW;
-    else if (targetAnchor === "right") tx += nodeHalfW;
+    let targetX = tx;
+    let targetY = ty;
+    if (targetAnchor === "top") targetY -= tHalfH;
+    else if (targetAnchor === "bottom") targetY += tHalfH;
+    else if (targetAnchor === "left") targetX -= tHalfW;
+    else if (targetAnchor === "right") targetX += tHalfW;
 
-    const dx = tx - source.x;
-    const dy = ty - source.y;
+    const dx = targetX - sx;
+    const dy = targetY - sy;
     if (Math.abs(dx) >= Math.abs(dy)) {
       resolvedSourceAnchor = dx > 0 ? "right" : "left";
     } else {
       resolvedSourceAnchor = dy > 0 ? "bottom" : "top";
     }
   } else if (targetAnchor === "auto") {
-    let sx = source.x;
-    let sy = source.y;
-    if (sourceAnchor === "top") sy -= nodeHalfH;
-    else if (sourceAnchor === "bottom") sy += nodeHalfH;
-    else if (sourceAnchor === "left") sx -= nodeHalfW;
-    else if (sourceAnchor === "right") sx += nodeHalfW;
+    let sourceX = sx;
+    let sourceY = sy;
+    if (sourceAnchor === "top") sourceY -= sHalfH;
+    else if (sourceAnchor === "bottom") sourceY += sHalfH;
+    else if (sourceAnchor === "left") sourceX -= sHalfW;
+    else if (sourceAnchor === "right") sourceX += sHalfW;
 
-    const dx = target.x - sx;
-    const dy = target.y - sy;
+    const dx = tx - sourceX;
+    const dy = ty - sourceY;
     if (Math.abs(dx) >= Math.abs(dy)) {
       resolvedTargetAnchor = dx > 0 ? "left" : "right";
     } else {
@@ -608,34 +656,41 @@ function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor
   let x1, y1, x2, y2;
 
   if (resolvedSourceAnchor === "top") {
-    x1 = source.x;
-    y1 = source.y - nodeHalfH;
+    x1 = sx;
+    y1 = sy - sHalfH;
   } else if (resolvedSourceAnchor === "bottom") {
-    x1 = source.x;
-    y1 = source.y + nodeHalfH;
+    x1 = sx;
+    y1 = sy + sHalfH;
   } else if (resolvedSourceAnchor === "left") {
-    x1 = source.x - nodeHalfW;
-    y1 = source.y;
+    x1 = sx - sHalfW;
+    y1 = sy;
   } else { // right
-    x1 = source.x + nodeHalfW;
-    y1 = source.y;
+    x1 = sx + sHalfW;
+    y1 = sy;
   }
 
   if (resolvedTargetAnchor === "top") {
-    x2 = target.x;
-    y2 = target.y - nodeHalfH;
+    x2 = tx;
+    y2 = ty - tHalfH;
   } else if (resolvedTargetAnchor === "bottom") {
-    x2 = target.x;
-    y2 = target.y + nodeHalfH;
+    x2 = tx;
+    y2 = ty + tHalfH;
   } else if (resolvedTargetAnchor === "left") {
-    x2 = target.x - nodeHalfW;
-    y2 = target.y;
+    x2 = tx - tHalfW;
+    y2 = ty;
   } else { // right
-    x2 = target.x + nodeHalfW;
-    y2 = target.y;
+    x2 = tx + tHalfW;
+    y2 = ty;
   }
 
-  return { x1, y1, x2, y2, resolvedSourceAnchor, resolvedTargetAnchor };
+  return {
+    x1: Math.round(x1),
+    y1: Math.round(y1),
+    x2: Math.round(x2),
+    y2: Math.round(y2),
+    resolvedSourceAnchor,
+    resolvedTargetAnchor
+  };
 }
 
 // Unicode formatting for subscripts/superscripts
@@ -667,7 +722,7 @@ function toggleUnicodeScript(text, mode) {
 }
 
 // Auto-wrap SVG text labels into multi-line tspans dynamically
-function wrapSVGText(textEl, label, maxWidth, fontSize) {
+function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE_HEIGHT, textAlign = "center", verticalAlign = "middle") {
   textEl.innerHTML = "";
   if (!label || label.trim() === "") return;
 
@@ -706,18 +761,48 @@ function wrapSVGText(textEl, label, maxWidth, fontSize) {
   }
 
   const lineHeight = fontSize * 1.25;
+  const maxLines = Math.floor((h - 8) / lineHeight) || 1;
+  if (lines.length > maxLines) {
+    lines.splice(maxLines);
+    if (lines.length > 0) {
+      const lastLine = lines[lines.length - 1];
+      lines[lines.length - 1] = lastLine.substring(0, Math.max(0, lastLine.length - 3)) + "...";
+    }
+  }
+
   const totalHeight = lines.length * lineHeight;
+  const centerX = parseFloat(textEl.getAttribute("x"));
   const centerY = parseFloat(textEl.getAttribute("y"));
-  
-  // Align text baseline using standard top-down baseline centering
+  const left = centerX - w / 2;
+  const right = centerX + w / 2;
+  const top = centerY - h / 2;
+  const bottom = centerY + h / 2;
+
+  let startY;
   const capHeightOffset = fontSize * 0.35;
-  const startY = centerY - (totalHeight / 2) + (lineHeight / 2) + capHeightOffset;
+  if (verticalAlign === "top") {
+    startY = top + 8 + capHeightOffset;
+  } else if (verticalAlign === "bottom") {
+    startY = bottom - totalHeight - 8 + (lineHeight / 2) + capHeightOffset;
+  } else {
+    startY = centerY - (totalHeight / 2) + (lineHeight / 2) + capHeightOffset;
+  }
+
+  let textAnchor = "middle";
+  let tspanX = centerX;
+  if (textAlign === "left") {
+    textAnchor = "start";
+    tspanX = left + 10;
+  } else if (textAlign === "right") {
+    textAnchor = "end";
+    tspanX = right - 10;
+  }
 
   lines.forEach((lineText, idx) => {
     const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-    tspan.setAttribute("x", textEl.getAttribute("x"));
+    tspan.setAttribute("x", tspanX);
     tspan.setAttribute("y", startY + idx * lineHeight);
-    tspan.setAttribute("text-anchor", "middle");
+    tspan.setAttribute("text-anchor", textAnchor);
     tspan.setAttribute("dominant-baseline", "alphabetic");
     tspan.textContent = lineText;
     textEl.appendChild(tspan);
@@ -970,6 +1055,38 @@ function getVerticalNodeX(nodeIdx, totalNodes) {
 }
 
 // Helper to find a node by ID in state
+function validateAndClampNode(node) {
+  if (!node) return;
+  if (node.width !== undefined) {
+    if (isNaN(node.width) || typeof node.width !== "number" || node.width <= 0) {
+      node.width = NODE_WIDTH;
+    } else {
+      node.width = Math.max(20, Math.min(2000, node.width));
+    }
+  }
+  if (node.height !== undefined) {
+    if (isNaN(node.height) || typeof node.height !== "number" || node.height <= 0) {
+      node.height = NODE_HEIGHT;
+    } else {
+      node.height = Math.max(20, Math.min(2000, node.height));
+    }
+  }
+  if (node.x !== undefined) {
+    if (isNaN(node.x) || typeof node.x !== "number") {
+      delete node.x;
+    } else {
+      node.x = Math.max(-5000, Math.min(5000, node.x));
+    }
+  }
+  if (node.y !== undefined) {
+    if (isNaN(node.y) || typeof node.y !== "number") {
+      delete node.y;
+    } else {
+      node.y = Math.max(-5000, Math.min(5000, node.y));
+    }
+  }
+}
+
 function findNodeById(nodeId) {
   let found = null;
   state.columns.forEach(col => {
@@ -1268,7 +1385,8 @@ function renderSVG() {
         // Ignore if source or target coordinates are missing (dangling references)
         if (!sourcePos || !targetPos) return;
 
-        const points = getConnectionPoints(sourcePos, targetPos, sourceAnchor, targetAnchor);
+        const targetNode = findNodeById(targetId);
+        const points = getConnectionPoints(sourcePos, targetPos, sourceAnchor, targetAnchor, node, targetNode);
 
         const customShape = isObj ? (targetVal.lineShape || "auto") : "auto";
         const shape = customShape !== "auto" ? customShape : (state.lineShape || "orthogonal");
@@ -1384,30 +1502,50 @@ function renderSVG() {
           labelText.setAttribute("y", mid.y);
           labelText.setAttribute("text-anchor", "middle");
           labelText.setAttribute("dominant-baseline", "middle");
-          labelText.style.fill = "var(--text-secondary)";
-          labelText.style.fontSize = "9px";
-          labelText.style.fontFamily = "var(--font-mono)";
+          
+          const lColor = isObj && targetVal.labelColor ? targetVal.labelColor : "var(--text-secondary)";
+          const lFontSize = isObj && targetVal.labelFontSize ? targetVal.labelFontSize : 9;
+          const lFontFamily = isObj && targetVal.labelFontFamily ? targetVal.labelFontFamily : "var(--font-mono)";
+          
+          labelText.style.fill = lColor;
+          labelText.style.fontSize = `${lFontSize}px`;
+          labelText.style.fontFamily = lFontFamily;
           labelText.textContent = targetVal.label;
 
           labelGroup.appendChild(labelRect);
           labelGroup.appendChild(labelText);
           connectorsGroup.appendChild(labelGroup);
 
-          const textLen = targetVal.label.length * 5.5 + 8;
+          const textLen = targetVal.label.length * (lFontSize * 0.58) + 8;
           labelRect.setAttribute("width", textLen);
-          labelRect.setAttribute("height", 14);
+          labelRect.setAttribute("height", lFontSize + 5);
           labelRect.setAttribute("x", mid.x - textLen / 2);
-          labelRect.setAttribute("y", mid.y - 7);
+          labelRect.setAttribute("y", mid.y - (lFontSize + 5) / 2);
         }
       });
     });
   });
 
   // C. Draw Nodes (Box rectangles and labels, supporting custom style properties)
-  state.columns.forEach(col => {
-    col.nodes.forEach(node => {
-      const pos = nodeCoords[node.id];
-      if (!pos) return;
+  const allNodesToRender = [];
+  state.columns.forEach((col, cIdx) => {
+    col.nodes.forEach((node, nIdx) => {
+      allNodesToRender.push({ node, cIdx, nIdx });
+    });
+  });
+  
+  // Sort by zIndex, then fallback to column order if zIndex matches
+  allNodesToRender.sort((a, b) => {
+    const zA = a.node.zIndex || 0;
+    const zB = b.node.zIndex || 0;
+    if (zA !== zB) return zA - zB;
+    if (a.cIdx !== b.cIdx) return a.cIdx - b.cIdx;
+    return a.nIdx - b.nIdx;
+  });
+
+  allNodesToRender.forEach(({ node }) => {
+    const pos = nodeCoords[node.id];
+    if (!pos) return;
 
       const isSelected = selectedNodeIds.has(node.id);
       const isConnectingSource = connectionSourceId === node.id;
@@ -1426,10 +1564,12 @@ function renderSVG() {
 
       // Render based on shape
       let shapeEl;
-      const left = pos.x - NODE_WIDTH / 2;
-      const top = pos.y - NODE_HEIGHT / 2;
-      const right = pos.x + NODE_WIDTH / 2;
-      const bottom = pos.y + NODE_HEIGHT / 2;
+      const w = node.width || NODE_WIDTH;
+      const h = node.height || NODE_HEIGHT;
+      const left = pos.x - w / 2;
+      const top = pos.y - h / 2;
+      const right = pos.x + w / 2;
+      const bottom = pos.y + h / 2;
       
       const shapeType = node.shape || "rect";
       
@@ -1440,10 +1580,10 @@ function renderSVG() {
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         shapeEl.setAttribute("x", left);
         shapeEl.setAttribute("y", top);
-        shapeEl.setAttribute("width", NODE_WIDTH);
-        shapeEl.setAttribute("height", NODE_HEIGHT);
-        shapeEl.setAttribute("rx", NODE_HEIGHT / 2);
-        shapeEl.setAttribute("ry", NODE_HEIGHT / 2);
+        shapeEl.setAttribute("width", w);
+        shapeEl.setAttribute("height", h);
+        shapeEl.setAttribute("rx", h / 2);
+        shapeEl.setAttribute("ry", h / 2);
       } else if (shapeType === "parallelogram") {
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         const skew = 20;
@@ -1451,21 +1591,21 @@ function renderSVG() {
       } else if (shapeType === "cylinder") {
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
         const ry = 6;
-        shapeEl.setAttribute("d", `M ${left} ${top + ry} A ${NODE_WIDTH/2} ${ry} 0 0 1 ${right} ${top + ry} V ${bottom - ry} A ${NODE_WIDTH/2} ${ry} 0 0 1 ${left} ${bottom - ry} Z M ${left} ${top + ry} A ${NODE_WIDTH/2} ${ry} 0 0 0 ${right} ${top + ry}`);
+        shapeEl.setAttribute("d", `M ${left} ${top + ry} A ${w/2} ${ry} 0 0 1 ${right} ${top + ry} V ${bottom - ry} A ${w/2} ${ry} 0 0 1 ${left} ${bottom - ry} Z M ${left} ${top + ry} A ${w/2} ${ry} 0 0 0 ${right} ${top + ry}`);
       } else if (shapeType === "roundrect") {
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         shapeEl.setAttribute("x", left);
         shapeEl.setAttribute("y", top);
-        shapeEl.setAttribute("width", NODE_WIDTH);
-        shapeEl.setAttribute("height", NODE_HEIGHT);
+        shapeEl.setAttribute("width", w);
+        shapeEl.setAttribute("height", h);
         shapeEl.setAttribute("rx", node.rx !== undefined ? node.rx : 15);
       } else {
         // default "rect"
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
         shapeEl.setAttribute("x", left);
         shapeEl.setAttribute("y", top);
-        shapeEl.setAttribute("width", NODE_WIDTH);
-        shapeEl.setAttribute("height", NODE_HEIGHT);
+        shapeEl.setAttribute("width", w);
+        shapeEl.setAttribute("height", h);
         shapeEl.setAttribute("rx", node.rx !== undefined ? node.rx : "0");
       }
       
@@ -1567,7 +1707,7 @@ function renderSVG() {
         text.style.fontFamily = node.fontFamily;
       }
 
-      wrapSVGText(text, node.label, NODE_WIDTH - 20, node.fontSize || 12);
+      wrapSVGText(text, node.label, w - 20, node.fontSize || 12, w, h, node.textAlign || "center", node.verticalAlign || "middle");
 
       g.appendChild(shapeEl);
       g.appendChild(text);
@@ -1583,10 +1723,35 @@ function renderSVG() {
           <rect x="2" y="5" width="8" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2" />
           <path d="M4 5 V3.5 A 2 2 0 0 1 8 3.5 V5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
         `;
-        const padColor = node.textColor || nodeText;
+        const padColor = node.textColor || "var(--text-primary)";
         padlock.setAttribute("stroke", padColor);
         padlock.style.color = padColor;
         g.appendChild(padlock);
+      }
+
+      if (isSelected && !node.locked) {
+        // Draw 8 resize handles
+        const handles = [
+          { dir: 'nw', x: left, y: top },
+          { dir: 'n', x: pos.x, y: top },
+          { dir: 'ne', x: right, y: top },
+          { dir: 'e', x: right, y: pos.y },
+          { dir: 'se', x: right, y: bottom },
+          { dir: 's', x: pos.x, y: bottom },
+          { dir: 'sw', x: left, y: bottom },
+          { dir: 'w', x: left, y: pos.y }
+        ];
+        handles.forEach(h => {
+          const handle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          handle.setAttribute("class", "resize-handle");
+          handle.setAttribute("data-dir", h.dir);
+          handle.setAttribute("data-id", node.id);
+          handle.setAttribute("x", h.x - 4);
+          handle.setAttribute("y", h.y - 4);
+          handle.setAttribute("width", 8);
+          handle.setAttribute("height", 8);
+          g.appendChild(handle);
+        });
       }
 
       nodesGroup.appendChild(g);
@@ -1625,7 +1790,6 @@ function renderSVG() {
           startInlineEditing(node.id);
         }
       });
-    });
   });
   
   // Clear selection if clicking on empty canvas space
@@ -1651,7 +1815,7 @@ function renderSVG() {
 }
 
 // Set active selection
-function selectNode(id, clearOthers = true) {
+function selectNode(id, clearOthers = true, ignoreGroup = false) {
   const hadConnector = selectedConnector !== null;
   selectedConnector = null;
   if (clearOthers) {
@@ -1659,7 +1823,15 @@ function selectNode(id, clearOthers = true) {
   }
   if (id) {
     selectedNodeIds.add(id);
-    selectedNodeId = id;
+    if (!ignoreGroup) {
+      const nodeObj = findNodeById(id);
+      if (nodeObj && nodeObj.groupId) {
+        state.columns.forEach(col => col.nodes.forEach(n => {
+          if (n.groupId === nodeObj.groupId) selectedNodeIds.add(n.id);
+        }));
+      }
+    }
+    selectedNodeId = selectedNodeIds.size === 1 ? id : null;
   } else {
     selectedNodeId = selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null;
   }
@@ -1831,6 +2003,139 @@ function renderMultiSelectionPanel() {
   `;
   selectionSettingsContainer.appendChild(header);
 
+  // Layout & Alignment Section
+  const layoutWrapper = document.createElement("div");
+  layoutWrapper.className = "input-field-wrapper";
+  layoutWrapper.innerHTML = `
+    <label>Alignment & Distribution</label>
+    <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--panel-border); padding: 10px; background-color: var(--bg-color); margin-bottom: 12px;">
+      <div style="display: flex; gap: 4px; justify-content: space-between;">
+        <button class="btn btn-secondary" id="align-left-btn" title="Align Left" style="flex: 1; padding: 4px;">|&larr;</button>
+        <button class="btn btn-secondary" id="align-center-btn" title="Align Center" style="flex: 1; padding: 4px;">&harr;</button>
+        <button class="btn btn-secondary" id="align-right-btn" title="Align Right" style="flex: 1; padding: 4px;">&rarr;|</button>
+      </div>
+      <div style="display: flex; gap: 4px; justify-content: space-between;">
+        <button class="btn btn-secondary" id="align-top-btn" title="Align Top" style="flex: 1; padding: 4px;">&uarr;</button>
+        <button class="btn btn-secondary" id="align-middle-btn" title="Align Middle" style="flex: 1; padding: 4px;">&varr;</button>
+        <button class="btn btn-secondary" id="align-bottom-btn" title="Align Bottom" style="flex: 1; padding: 4px;">&darr;</button>
+      </div>
+      <div style="display: flex; gap: 4px; justify-content: space-between; margin-top: 4px;">
+        <button class="btn btn-secondary" id="dist-horiz-btn" title="Distribute Horizontally" style="flex: 1; padding: 4px; font-size: 10px;">Dist H</button>
+        <button class="btn btn-secondary" id="dist-vert-btn" title="Distribute Vertically" style="flex: 1; padding: 4px; font-size: 10px;">Dist V</button>
+      </div>
+      <div style="display: flex; gap: 4px; justify-content: space-between; margin-top: 4px;">
+        <button class="btn btn-secondary" id="match-width-btn" title="Match Width" style="flex: 1; padding: 4px; font-size: 10px;">= Width</button>
+        <button class="btn btn-secondary" id="match-height-btn" title="Match Height" style="flex: 1; padding: 4px; font-size: 10px;">= Height</button>
+        <button class="btn btn-secondary" id="match-size-btn" title="Match Size" style="flex: 1; padding: 4px; font-size: 10px;">= Size</button>
+      </div>
+    </div>
+  `;
+  selectionSettingsContainer.appendChild(layoutWrapper);
+
+  const getSelectedNodesList = () => {
+    let nodes = [];
+    state.columns.forEach(col => {
+      col.nodes.forEach(n => {
+        if (selectedNodeIds.has(n.id)) nodes.push(n);
+      });
+    });
+    return nodes;
+  };
+
+  // Implement Layout Handlers
+  layoutWrapper.querySelector("#align-left-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const minX = Math.min(...nodes.map(n => n.x || 0));
+    nodes.forEach(n => { if(!n.locked) n.x = minX; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Left");
+  });
+  layoutWrapper.querySelector("#align-center-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const avgX = nodes.reduce((sum, n) => sum + (n.x || 0), 0) / nodes.length;
+    nodes.forEach(n => { if(!n.locked) n.x = avgX; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Center");
+  });
+  layoutWrapper.querySelector("#align-right-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const maxX = Math.max(...nodes.map(n => n.x || 0));
+    nodes.forEach(n => { if(!n.locked) n.x = maxX; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Right");
+  });
+  layoutWrapper.querySelector("#align-top-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const minY = Math.min(...nodes.map(n => n.y || 0));
+    nodes.forEach(n => { if(!n.locked) n.y = minY; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Top");
+  });
+  layoutWrapper.querySelector("#align-middle-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const avgY = nodes.reduce((sum, n) => sum + (n.y || 0), 0) / nodes.length;
+    nodes.forEach(n => { if(!n.locked) n.y = avgY; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Middle");
+  });
+  layoutWrapper.querySelector("#align-bottom-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const maxY = Math.max(...nodes.map(n => n.y || 0));
+    nodes.forEach(n => { if(!n.locked) n.y = maxY; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Aligned Bottom");
+  });
+  layoutWrapper.querySelector("#dist-horiz-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList().filter(n => !n.locked).sort((a, b) => (a.x || 0) - (b.x || 0));
+    if (nodes.length < 3) return;
+    const minX = nodes[0].x || 0;
+    const maxX = nodes[nodes.length - 1].x || 0;
+    const step = (maxX - minX) / (nodes.length - 1);
+    nodes.forEach((n, idx) => { n.x = minX + (step * idx); });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Distributed Horizontally");
+  });
+  layoutWrapper.querySelector("#dist-vert-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList().filter(n => !n.locked).sort((a, b) => (a.y || 0) - (b.y || 0));
+    if (nodes.length < 3) return;
+    const minY = nodes[0].y || 0;
+    const maxY = nodes[nodes.length - 1].y || 0;
+    const step = (maxY - minY) / (nodes.length - 1);
+    nodes.forEach((n, idx) => { n.y = minY + (step * idx); });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Distributed Vertically");
+  });
+  layoutWrapper.querySelector("#match-width-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const targetWidth = nodes[0].width || NODE_WIDTH;
+    nodes.forEach(n => { if(!n.locked) n.width = targetWidth; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Matched Widths");
+  });
+  layoutWrapper.querySelector("#match-height-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const targetHeight = nodes[0].height || NODE_HEIGHT;
+    nodes.forEach(n => { if(!n.locked) n.height = targetHeight; });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Matched Heights");
+  });
+  layoutWrapper.querySelector("#match-size-btn").addEventListener("click", () => {
+    pushState();
+    const nodes = getSelectedNodesList();
+    if (nodes.length < 2) return;
+    const targetWidth = nodes[0].width || NODE_WIDTH;
+    const targetHeight = nodes[0].height || NODE_HEIGHT;
+    nodes.forEach(n => { if(!n.locked) { n.width = targetWidth; n.height = targetHeight; } });
+    calculateCoordinates(); renderSVG(); saveData(); showToast("Matched Sizes");
+  });
   const theme = document.documentElement.getAttribute("data-theme") || "light";
   const defFill = theme === "dark" ? "#121212" : "#ffffff";
   const defStroke = theme === "dark" ? "#a3a3a3" : "#171717";
@@ -2734,9 +3039,7 @@ function renderSidebarSelection() {
   inputEl.addEventListener("input", (e) => {
     selectedNode.label = e.target.value;
     
-    // Update SVG and sidebar text lists in real time
-    const svgText = document.querySelector(`#node-${selectedNode.id} .node-text`);
-    if (svgText) svgText.textContent = e.target.value;
+    renderSVG();
     
     const sidebarItemText = document.querySelector(`.structure-node-item[data-id="${selectedNode.id}"] span`);
     if (sidebarItemText) {
@@ -2773,6 +3076,55 @@ function renderSidebarSelection() {
   if (btnSuper) btnSuper.addEventListener("click", () => applyScriptToSelection('super'));
   
   selectionSettingsContainer.appendChild(labelWrapper);
+
+  // A2. Dimensions & Layering
+  const dimWrapper = document.createElement("div");
+  dimWrapper.className = "input-field-wrapper";
+  dimWrapper.style.marginTop = "16px";
+  dimWrapper.innerHTML = `
+    <label>Dimensions & Layering</label>
+    <div style="display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--panel-border); padding: 10px; background-color: var(--bg-color);">
+      <!-- Dimensions -->
+      <div style="display: flex; gap: 8px;">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Width (px)</span>
+          <input type="number" id="node-width-input" class="text-input" value="${Math.round((selectedNode.width || NODE_WIDTH) * 10) / 10}" style="padding: 4px; font-size: 11px;">
+        </div>
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Height (px)</span>
+          <input type="number" id="node-height-input" class="text-input" value="${Math.round((selectedNode.height || NODE_HEIGHT) * 10) / 10}" style="padding: 4px; font-size: 11px;">
+        </div>
+      </div>
+      <!-- Layering -->
+      <div style="display: flex; gap: 8px; margin-top: 4px;">
+        <button class="btn btn-secondary" id="node-bring-forward-btn" style="flex: 1; padding: 4px 8px; font-size: 11px;" title="Bring Forward">Forward</button>
+        <button class="btn btn-secondary" id="node-send-backward-btn" style="flex: 1; padding: 4px 8px; font-size: 11px;" title="Send Backward">Backward</button>
+      </div>
+    </div>
+  `;
+  selectionSettingsContainer.appendChild(dimWrapper);
+
+  dimWrapper.querySelector("#node-width-input").addEventListener("change", (e) => {
+    pushState();
+    selectedNode.width = Math.max(20, parseInt(e.target.value) || NODE_WIDTH);
+    calculateCoordinates(); renderSVG(); saveData();
+  });
+  dimWrapper.querySelector("#node-height-input").addEventListener("change", (e) => {
+    pushState();
+    selectedNode.height = Math.max(20, parseInt(e.target.value) || NODE_HEIGHT);
+    calculateCoordinates(); renderSVG(); saveData();
+  });
+
+  dimWrapper.querySelector("#node-bring-forward-btn").addEventListener("click", () => {
+    pushState();
+    selectedNode.zIndex = (selectedNode.zIndex || 0) + 1;
+    renderAll(); saveData();
+  });
+  dimWrapper.querySelector("#node-send-backward-btn").addEventListener("click", () => {
+    pushState();
+    selectedNode.zIndex = (selectedNode.zIndex || 0) - 1;
+    renderAll(); saveData();
+  });
 
   // B. Style Customization Section
   const theme = document.documentElement.getAttribute("data-theme") || "light";
@@ -2953,6 +3305,22 @@ function renderSidebarSelection() {
             <button class="selector-option text-style-btn" id="node-btn-underline" data-style="underline" style="padding: 4px 8px; text-decoration: underline; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">U</button>
           </div>
         </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Align H</span>
+          <div style="display: flex; gap: 4px; flex: 1;">
+            <button class="selector-option text-align-btn ${selectedNode.textAlign === 'left' ? 'active' : ''}" id="node-align-left" data-align="left" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Left</button>
+            <button class="selector-option text-align-btn ${(selectedNode.textAlign === 'center' || !selectedNode.textAlign) ? 'active' : ''}" id="node-align-center" data-align="center" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Center</button>
+            <button class="selector-option text-align-btn ${selectedNode.textAlign === 'right' ? 'active' : ''}" id="node-align-right" data-align="right" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Right</button>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Align V</span>
+          <div style="display: flex; gap: 4px; flex: 1;">
+            <button class="selector-option text-valign-btn ${selectedNode.verticalAlign === 'top' ? 'active' : ''}" id="node-valign-top" data-valign="top" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Top</button>
+            <button class="selector-option text-valign-btn ${(selectedNode.verticalAlign === 'middle' || !selectedNode.verticalAlign) ? 'active' : ''}" id="node-valign-middle" data-valign="middle" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Middle</button>
+            <button class="selector-option text-valign-btn ${selectedNode.verticalAlign === 'bottom' ? 'active' : ''}" id="node-valign-bottom" data-valign="bottom" style="padding: 4px 8px; flex: 1; border: 1px solid var(--panel-border); font-size: 10px;">Bottom</button>
+          </div>
+        </div>
       </div>
       
       <button class="btn" id="reset-node-style-btn" style="padding: 6px; font-size: 10px; margin-top: 4px;">
@@ -3109,6 +3477,30 @@ function renderSidebarSelection() {
     underlineBtn.classList.toggle("active", isUnderline);
     renderSVG();
     saveData();
+  });
+
+  styleWrapper.querySelectorAll(".text-align-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const align = e.target.closest(".text-align-btn").dataset.align;
+      selectedNode.textAlign = align;
+      styleWrapper.querySelectorAll(".text-align-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.align === align);
+      });
+      renderSVG();
+      saveData();
+    });
+  });
+
+  styleWrapper.querySelectorAll(".text-valign-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const valign = e.target.closest(".text-valign-btn").dataset.valign;
+      selectedNode.verticalAlign = valign;
+      styleWrapper.querySelectorAll(".text-valign-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.valign === valign);
+      });
+      renderSVG();
+      saveData();
+    });
   });
 
   wireColorPickerPair(fillPicker, fillHex, (val) => {
@@ -3893,7 +4285,7 @@ function setupEventListeners() {
     
     const key = e.key.toLowerCase();
     
-    // Undo / Redo keyboard shortcuts
+    // Keyboard shortcuts with Ctrl / Cmd
     if ((e.ctrlKey || e.metaKey) && !isTyping) {
       if (key === "z") {
         e.preventDefault();
@@ -3907,6 +4299,119 @@ function setupEventListeners() {
       if (key === "y") {
         e.preventDefault();
         executeRedo();
+        return;
+      }
+      if (key === "g") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          // Ungroup
+          if (selectedNodeIds.size > 0) {
+            pushState();
+            let changed = false;
+            selectedNodeIds.forEach(id => {
+              const node = findNodeById(id);
+              if (node && node.groupId) {
+                delete node.groupId;
+                changed = true;
+              }
+            });
+            if (changed) { renderAll(); saveData(); showToast("Ungrouped nodes"); }
+          }
+        } else {
+          // Group
+          if (selectedNodeIds.size > 1) {
+            pushState();
+            const groupId = "G_" + Math.random().toString(36).substr(2, 9);
+            selectedNodeIds.forEach(id => {
+              const node = findNodeById(id);
+              if (node) node.groupId = groupId;
+            });
+            renderAll(); saveData(); showToast("Grouped nodes");
+          }
+        }
+        return;
+      }
+      if (key === "a") {
+        e.preventDefault();
+        selectedNodeIds.clear();
+        state.columns.forEach(col => {
+          col.nodes.forEach(n => {
+            if (!n.locked) selectedNodeIds.add(n.id);
+          });
+        });
+        if (selectedNodeIds.size === 1) {
+          selectNode(Array.from(selectedNodeIds)[0]);
+        } else {
+          selectNode(null);
+        }
+        renderAll();
+        return;
+      }
+      if (key === "c") {
+        if (selectedNodeIds.size > 0) {
+          e.preventDefault();
+          clipboardNodes = [];
+          selectedNodeIds.forEach(id => {
+            const n = findNodeById(id);
+            if (n && !n.locked) clipboardNodes.push(JSON.parse(JSON.stringify(n)));
+          });
+          showToast(`Copied ${clipboardNodes.length} boxes`);
+        }
+        return;
+      }
+      if (key === "v") {
+        if (clipboardNodes.length > 0) {
+          e.preventDefault();
+          pushState();
+          selectedNodeIds.clear();
+          const targetCol = state.columns[state.columns.length - 1]; // Paste into last column for simplicity, or we can just append to the first column
+          
+          clipboardNodes.forEach(clipNode => {
+            const newNode = JSON.parse(JSON.stringify(clipNode));
+            newNode.id = "B_" + Math.random().toString(36).substr(2, 5).toUpperCase();
+            newNode.x = (newNode.x || 0) + 20;
+            newNode.y = (newNode.y || 0) + 20;
+            newNode.targets = []; // Do not copy connections by default
+            targetCol.nodes.push(newNode);
+            selectedNodeIds.add(newNode.id);
+          });
+          selectNode(null); // Multi-select
+          renderAll();
+          saveData();
+          showToast(`Pasted ${clipboardNodes.length} boxes`);
+        }
+        return;
+      }
+      if (key === "d") {
+        if (selectedNodeIds.size > 0) {
+          e.preventDefault();
+          pushState();
+          const newIds = [];
+          selectedNodeIds.forEach(id => {
+            const n = findNodeById(id);
+            if (n && !n.locked) {
+              const newNode = JSON.parse(JSON.stringify(n));
+              newNode.id = "B_" + Math.random().toString(36).substr(2, 5).toUpperCase();
+              newNode.x = (newNode.x || 0) + 20;
+              newNode.y = (newNode.y || 0) + 20;
+              newNode.targets = [];
+              
+              // Find which column to put it in
+              state.columns.forEach(col => {
+                if (col.nodes.some(cn => cn.id === id)) {
+                  col.nodes.push(newNode);
+                }
+              });
+              newIds.push(newNode.id);
+            }
+          });
+          selectedNodeIds.clear();
+          newIds.forEach(id => selectedNodeIds.add(id));
+          selectNode(null);
+          renderAll();
+          saveData();
+          showToast(`Duplicated ${newIds.length} boxes`);
+        }
         return;
       }
     }
@@ -3939,6 +4444,33 @@ function setupEventListeners() {
     }
 
     if (isTyping) return;
+    
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      if (selectedNodeIds.size > 0) {
+        e.preventDefault();
+        const moveAmount = e.shiftKey ? (state.gridSize || 20) : 1;
+        let dx = 0; let dy = 0;
+        if (e.key === "ArrowUp") dy = -moveAmount;
+        if (e.key === "ArrowDown") dy = moveAmount;
+        if (e.key === "ArrowLeft") dx = -moveAmount;
+        if (e.key === "ArrowRight") dx = moveAmount;
+
+        pushState();
+        selectedNodeIds.forEach(id => {
+          const n = findNodeById(id);
+          if (n && !n.locked) {
+            const coords = nodeCoords[id] || { x: 0, y: 0 };
+            n.x = (n.x !== undefined ? n.x : coords.x) + dx;
+            n.y = (n.y !== undefined ? n.y : coords.y) + dy;
+            validateAndClampNode(n);
+          }
+        });
+        calculateCoordinates();
+        renderSVG();
+        saveData();
+      }
+      return;
+    }
     
     if (e.key === "Tab") {
       e.preventDefault();
@@ -4274,6 +4806,31 @@ function setupEventListeners() {
     });
   }
 
+  // Snap to objects selector
+  const snapObjectsSelector = document.getElementById("snap-objects-selector");
+  if (snapObjectsSelector) {
+    snapObjectsSelector.addEventListener("click", (e) => {
+      const btn = e.target.closest(".selector-option");
+      if (!btn) return;
+      snapObjectsSelector.querySelectorAll(".selector-option").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.snapToObjects = btn.dataset.value === "on";
+      saveData();
+      showToast(state.snapToObjects ? "Snap-to-objects Enabled" : "Snap-to-objects Disabled");
+    });
+  }
+
+  // Snap sensitivity slider
+  const snapSensitivitySlider = document.getElementById("snap-sensitivity-slider");
+  const snapSensitivityVal = document.getElementById("snap-sensitivity-val");
+  if (snapSensitivitySlider && snapSensitivityVal) {
+    snapSensitivitySlider.addEventListener("input", (e) => {
+      state.snapSensitivity = parseInt(e.target.value);
+      snapSensitivityVal.textContent = `${state.snapSensitivity}px`;
+      saveData();
+    });
+  }
+
   // Swimlanes toggle selector listener
   const swimlanesSelector = document.getElementById("swimlanes-selector");
   if (swimlanesSelector) {
@@ -4469,12 +5026,44 @@ function setupEventListeners() {
   const viewport = document.querySelector(".canvas-viewport");
   
   viewport.addEventListener("mousedown", (e) => {
+    // Blur active elements (inputs, select, buttons) to restore focus to body,
+    // enabling canvas keyboard shortcuts and spacebar panning immediately.
+    if (document.activeElement && 
+        document.activeElement !== document.body && 
+        typeof document.activeElement.blur === "function") {
+      // Don't blur if clicking inside the sidebar panel or inspectors
+      if (!e.target.closest(".sidebar") && !e.target.closest(".inspector-panel") && !e.target.closest(".left-toolbar")) {
+        document.activeElement.blur();
+      }
+    }
+
     if (isSpacePressed) {
       isPanning = true;
       viewport.style.cursor = "grabbing";
       startX = e.clientX - panX;
       startY = e.clientY - panY;
       e.preventDefault();
+      return;
+    }
+
+    // Node Resizing Start
+    const resizeHandle = e.target.closest(".resize-handle");
+    if (resizeHandle && e.button === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      pushState();
+      
+      isResizingNode = true;
+      resizeNodeId = resizeHandle.dataset.id;
+      resizeDirection = resizeHandle.dataset.dir;
+      resizeStartMouse = { x: e.clientX, y: e.clientY };
+      const nodeObj = findNodeById(resizeNodeId);
+      resizeStartBounds = {
+        x: nodeCoords[nodeObj.id].x,
+        y: nodeCoords[nodeObj.id].y,
+        w: nodeObj.width || NODE_WIDTH,
+        h: nodeObj.height || NODE_HEIGHT
+      };
       return;
     }
 
@@ -4488,9 +5077,24 @@ function setupEventListeners() {
       const nodeId = nodeGroup.dataset.id;
       const nodeObj = findNodeById(nodeId);
       
-      if (nodeObj && nodeObj.locked) {
-        // Selection is still allowed for locked nodes
-        if (e.shiftKey) {
+      const handleSelect = () => {
+        if (e.altKey) {
+          // Select Subtree
+          selectedNodeIds.clear();
+          const selectSubtree = (id) => {
+            if (selectedNodeIds.has(id)) return;
+            selectedNodeIds.add(id);
+            const n = findNodeById(id);
+            if (n && n.targets) {
+              n.targets.forEach(t => {
+                const tId = typeof t === "string" ? t : t.id;
+                selectSubtree(tId);
+              });
+            }
+          };
+          selectSubtree(nodeId);
+          selectNode(null, false, true);
+        } else if (e.shiftKey) {
           if (selectedNodeIds.has(nodeId)) {
             selectedNodeIds.delete(nodeId);
           } else {
@@ -4500,31 +5104,42 @@ function setupEventListeners() {
         } else {
           selectNode(nodeId);
         }
+      };
+
+      if (nodeObj && nodeObj.locked) {
+        // Selection is still allowed for locked nodes
+        handleSelect();
         renderAll();
         return;
       }
       
-      if (!selectedNodeIds.has(nodeId)) {
-        if (e.shiftKey) {
-          selectedNodeIds.add(nodeId);
-          selectNode(null, false);
-        } else {
-          selectNode(nodeId);
-        }
+      if (!selectedNodeIds.has(nodeId) || e.altKey || e.shiftKey) {
+        handleSelect();
         renderAll();
       }
       
       pushState();
       isDraggingNode = true;
       dragNodeId = nodeId;
+      dragAxisLock = null;
       
-      const pos = nodeCoords[nodeId];
       const rect = viewport.getBoundingClientRect();
       const clickCanvasX = (e.clientX - rect.left - panX) / zoom;
       const clickCanvasY = (e.clientY - rect.top - panY) / zoom;
       
-      dragNodeOffset.x = clickCanvasX - pos.x;
-      dragNodeOffset.y = clickCanvasY - pos.y;
+      dragStartCanvasPos = { x: clickCanvasX, y: clickCanvasY };
+      dragOriginalPositions = {};
+      
+      selectedNodeIds.forEach(id => {
+        const n = findNodeById(id);
+        if (n && !n.locked) {
+          const coords = nodeCoords[id] || { x: 0, y: 0 };
+          dragOriginalPositions[id] = {
+            x: n.x !== undefined ? n.x : coords.x,
+            y: n.y !== undefined ? n.y : coords.y
+          };
+        }
+      });
       
       e.preventDefault();
       e.stopPropagation();
@@ -4569,30 +5184,166 @@ function setupEventListeners() {
     }
   });
 
+  // Smart Guides helper
+  const drawSmartGuides = (x, y, snapX, snapY) => {
+    let guidesGroup = document.getElementById("smart-guides-group");
+    if (!guidesGroup) {
+      guidesGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      guidesGroup.id = "smart-guides-group";
+      document.getElementById("nodes-group").appendChild(guidesGroup);
+    }
+    guidesGroup.innerHTML = "";
+    const color = "var(--accent-color)";
+    
+    if (snapX !== null) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", snapX);
+      line.setAttribute("x2", snapX);
+      line.setAttribute("y1", "-5000");
+      line.setAttribute("y2", "5000");
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", "1 / zoom");
+      line.setAttribute("stroke-dasharray", "4,4");
+      guidesGroup.appendChild(line);
+    }
+    if (snapY !== null) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", "-5000");
+      line.setAttribute("x2", "5000");
+      line.setAttribute("y1", snapY);
+      line.setAttribute("y2", snapY);
+      line.setAttribute("stroke", color);
+      line.setAttribute("stroke-width", "1 / zoom");
+      line.setAttribute("stroke-dasharray", "4,4");
+      guidesGroup.appendChild(line);
+    }
+  };
+
+  const clearSmartGuides = () => {
+    const guidesGroup = document.getElementById("smart-guides-group");
+    if (guidesGroup) guidesGroup.innerHTML = "";
+  };
+
   window.addEventListener("mousemove", (e) => {
     if (isPanning) {
       panX = e.clientX - startX;
       panY = e.clientY - startY;
       applyZoomPan();
+    } else if (isResizingNode && resizeNodeId) {
+      const scale = zoom;
+      const dx = (e.clientX - resizeStartMouse.x) / scale;
+      const dy = (e.clientY - resizeStartMouse.y) / scale;
+
+      const node = findNodeById(resizeNodeId);
+      if (!node) return;
+
+      let newW = resizeStartBounds.w;
+      let newH = resizeStartBounds.h;
+      let newX = resizeStartBounds.x;
+      let newY = resizeStartBounds.y;
+
+      if (resizeDirection.includes('e')) {
+        newW = Math.max(20, resizeStartBounds.w + dx);
+        newX = resizeStartBounds.x + (newW - resizeStartBounds.w) / 2;
+      }
+      if (resizeDirection.includes('w')) {
+        newW = Math.max(20, resizeStartBounds.w - dx);
+        newX = resizeStartBounds.x - (newW - resizeStartBounds.w) / 2;
+      }
+      if (resizeDirection.includes('s')) {
+        newH = Math.max(20, resizeStartBounds.h + dy);
+        newY = resizeStartBounds.y + (newH - resizeStartBounds.h) / 2;
+      }
+      if (resizeDirection.includes('n')) {
+        newH = Math.max(20, resizeStartBounds.h - dy);
+        newY = resizeStartBounds.y - (newH - resizeStartBounds.h) / 2;
+      }
+
+      node.width = newW;
+      node.height = newH;
+      node.x = newX;
+      node.y = newY;
+      validateAndClampNode(node);
+      
+      calculateCoordinates();
+      renderSVG();
+      renderSidebarSelection();
     } else if (isDraggingNode && dragNodeId) {
       const rect = viewport.getBoundingClientRect();
       const clickCanvasX = (e.clientX - rect.left - panX) / zoom;
       const clickCanvasY = (e.clientY - rect.top - panY) / zoom;
       
-      const targetNode = findNodeById(dragNodeId);
-      if (targetNode && !targetNode.locked) {
-        let newX = clickCanvasX - dragNodeOffset.x;
-        let newY = clickCanvasY - dragNodeOffset.y;
-        if (state.gridEnabled) {
-          const grid = state.gridSize || 20;
-          newX = Math.round(newX / grid) * grid;
-          newY = Math.round(newY / grid) * grid;
+      let deltaX = clickCanvasX - dragStartCanvasPos.x;
+      let deltaY = clickCanvasY - dragStartCanvasPos.y;
+
+      // Shift constraint (Axis locking)
+      if (e.shiftKey) {
+        if (!dragAxisLock) {
+          if (Math.abs(deltaX) > Math.abs(deltaY)) dragAxisLock = 'x';
+          else dragAxisLock = 'y';
         }
-        targetNode.x = newX;
-        targetNode.y = newY;
-        calculateCoordinates();
-        renderSVG();
+        if (dragAxisLock === 'x') deltaY = 0;
+        else deltaX = 0;
+      } else {
+        dragAxisLock = null;
       }
+
+      const isSnappingOverridden = e.altKey;
+      clearSmartGuides();
+
+      let snapLineX = null;
+      let snapLineY = null;
+
+      selectedNodeIds.forEach(id => {
+        const targetNode = findNodeById(id);
+        const origPos = dragOriginalPositions[id];
+        if (targetNode && !targetNode.locked && origPos) {
+          let newX = origPos.x + deltaX;
+          let newY = origPos.y + deltaY;
+
+          // Apply grid snapping
+          if (state.gridEnabled && !isSnappingOverridden) {
+            const grid = state.gridSize || 20;
+            newX = Math.round(newX / grid) * grid;
+            newY = Math.round(newY / grid) * grid;
+          }
+
+          // Apply object snapping (Smart Guides) only if single node dragging
+          if (state.snapToObjects && !isSnappingOverridden && selectedNodeIds.size === 1 && !state.gridEnabled) {
+             const sensitivity = state.snapSensitivity || 5;
+             let bestDx = sensitivity + 1;
+             let bestDy = sensitivity + 1;
+             
+             state.columns.forEach(col => {
+               col.nodes.forEach(n => {
+                 if (n.id !== id) {
+                   const nx = n.x;
+                   const ny = n.y;
+                   // Centers
+                   const cx1 = newX + NODE_WIDTH/2;
+                   const cx2 = nx + NODE_WIDTH/2;
+                   const cy1 = newY + NODE_HEIGHT/2;
+                   const cy2 = ny + NODE_HEIGHT/2;
+
+                   if (Math.abs(newX - nx) < bestDx) { bestDx = Math.abs(newX - nx); newX = nx; snapLineX = nx; }
+                   if (Math.abs(cx1 - cx2) < bestDx) { bestDx = Math.abs(cx1 - cx2); newX = nx; snapLineX = cx2; }
+                   if (Math.abs(newY - ny) < bestDy) { bestDy = Math.abs(newY - ny); newY = ny; snapLineY = ny; }
+                   if (Math.abs(cy1 - cy2) < bestDy) { bestDy = Math.abs(cy1 - cy2); newY = ny; snapLineY = cy2; }
+                 }
+               });
+             });
+             if (snapLineX !== null || snapLineY !== null) {
+               drawSmartGuides(newX, newY, snapLineX, snapLineY);
+             }
+          }
+
+          targetNode.x = newX;
+          targetNode.y = newY;
+          validateAndClampNode(targetNode);
+        }
+      });
+      calculateCoordinates();
+      renderSVG();
     } else if (isDraggingSelection) {
       const viewportRect = viewport.getBoundingClientRect();
       const currentXRel = e.clientX - viewportRect.left;
@@ -4649,9 +5400,14 @@ function setupEventListeners() {
     if (isPanning) {
       isPanning = false;
       viewport.style.cursor = isSpacePressed ? "grab" : "";
+    } else if (isResizingNode) {
+      isResizingNode = false;
+      resizeNodeId = null;
+      saveData();
     } else if (isDraggingNode) {
       isDraggingNode = false;
       dragNodeId = null;
+      clearSmartGuides();
       saveData();
       renderSidebarSelection(); // Sync coordinate coordinates inputs
     } else if (isDraggingSelection) {
@@ -4887,7 +5643,7 @@ function loadSavedData() {
     const data = JSON.parse(saved);
     if (data && data.columns && Array.isArray(data.columns)) {
       state = data;
-      if (!state.animatedFlow) state.animatedFlow = "on";
+      if (!state.animatedFlow) state.animatedFlow = "off";
       
       // Update stroke selector button highlight
       if (state.strokeWidth) {
@@ -4975,6 +5731,23 @@ function loadSavedData() {
         const gridSizeSelect = document.getElementById("grid-size-select");
         if (gridSizeSelect) {
           gridSizeSelect.value = state.gridSize;
+        }
+      }
+      if (state.snapToObjects !== undefined) {
+        const snapObjectsSelector = document.getElementById("snap-objects-selector");
+        if (snapObjectsSelector) {
+          snapObjectsSelector.querySelectorAll(".selector-option").forEach(b => {
+            const isEnable = b.dataset.value === "on";
+            b.classList.toggle("active", isEnable === state.snapToObjects);
+          });
+        }
+      }
+      if (state.snapSensitivity) {
+        const snapSensitivitySlider = document.getElementById("snap-sensitivity-slider");
+        const snapSensitivityVal = document.getElementById("snap-sensitivity-val");
+        if (snapSensitivitySlider && snapSensitivityVal) {
+          snapSensitivitySlider.value = state.snapSensitivity;
+          snapSensitivityVal.textContent = `${state.snapSensitivity}px`;
         }
       }
       if (state.globalTheme) {
@@ -5406,8 +6179,11 @@ function renderConnectorSelectionPanel() {
   const lineStyle = isObj ? (targetObj.strokeStyle || "solid") : "solid";
   const lineOffset = isObj ? (targetObj.lineOffset || 0) : 0;
   const label = isObj ? (targetObj.label || "") : "";
-  const animatedVal = isObj && targetObj.animated !== undefined ? (targetObj.animated ? "enabled" : "disabled") : "default";
   const theme = document.documentElement.getAttribute("data-theme") || "light";
+  const labelColor = isObj && targetObj.labelColor ? targetObj.labelColor : (theme === 'dark' ? '#a3a3a3' : '#737373');
+  const labelFontSize = isObj && targetObj.labelFontSize ? targetObj.labelFontSize : 9;
+  const labelFontFamily = isObj && targetObj.labelFontFamily ? targetObj.labelFontFamily : "var(--font-mono)";
+  const animatedVal = isObj && targetObj.animated !== undefined ? (targetObj.animated ? "enabled" : "disabled") : "default";
   const strokeColor = isObj && targetObj.strokeColor ? targetObj.strokeColor : (theme === 'dark' ? '#a3a3a3' : '#171717');
   
   const header = document.createElement("div");
@@ -5431,6 +6207,29 @@ function renderConnectorSelectionPanel() {
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Line Label</span>
         <input type="text" id="conn-label-input" class="text-input" value="${label}" placeholder="e.g. Yes / No" style="padding: 4px 6px; font-size: 11px; border-radius: 2px;">
+      </div>
+
+      <!-- Label Styling -->
+      <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 6px; margin-top: 2px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 8px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Label Font</span>
+          <select id="conn-label-font" style="padding: 2px 4px; font-size: 10px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none; border-radius: 2px;">
+            <option value="var(--font-mono)" ${labelFontFamily === "var(--font-mono)" ? "selected" : ""}>Monospace</option>
+            <option value="var(--font-sans)" ${labelFontFamily === "var(--font-sans)" ? "selected" : ""}>Sans-Serif</option>
+            <option value="var(--font-serif)" ${labelFontFamily === "var(--font-serif)" ? "selected" : ""}>Serif</option>
+          </select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 8px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Font Size</span>
+          <input type="number" id="conn-label-size" class="text-input" value="${labelFontSize}" min="6" max="24" style="padding: 2px 4px; font-size: 10px; height: 18px; border-radius: 2px;">
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+        <span style="font-size: 8px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Label Color</span>
+        <div style="display: flex; gap: 4px; align-items: center;">
+          <input type="color" id="conn-label-color-picker" value="${labelColor.startsWith('var') ? (theme === 'dark' ? '#a3a3a3' : '#737373') : labelColor}" style="width: 24px; height: 18px; border: 1px solid var(--panel-border); cursor: pointer; flex-shrink: 0; padding: 0; background: none;">
+          <input type="text" id="conn-label-color-hex" class="text-input" value="${labelColor.startsWith('var') ? '' : labelColor}" placeholder="Theme Default" style="padding: 2px 4px; font-size: 9px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none; width: 100%; height: 18px; border-radius: 2px;">
+        </div>
       </div>
 
       <!-- Anchors -->
@@ -5557,6 +6356,32 @@ function renderConnectorSelectionPanel() {
   labelInput.addEventListener("input", (e) => {
     const obj = getTObj();
     if (obj) obj.label = e.target.value;
+    renderSVG();
+    saveData();
+  });
+
+  const labelFontSelect = propsEl.querySelector("#conn-label-font");
+  const labelSizeInput = propsEl.querySelector("#conn-label-size");
+  const labelColorPicker = propsEl.querySelector("#conn-label-color-picker");
+  const labelColorHex = propsEl.querySelector("#conn-label-color-hex");
+
+  labelFontSelect.addEventListener("change", (e) => {
+    const obj = getTObj();
+    if (obj) obj.labelFontFamily = e.target.value;
+    renderSVG();
+    saveData();
+  });
+
+  labelSizeInput.addEventListener("change", (e) => {
+    const obj = getTObj();
+    if (obj) obj.labelFontSize = parseInt(e.target.value) || 9;
+    renderSVG();
+    saveData();
+  });
+
+  wireColorPickerPair(labelColorPicker, labelColorHex, (val) => {
+    const obj = getTObj();
+    if (obj) obj.labelColor = val;
     renderSVG();
     saveData();
   });

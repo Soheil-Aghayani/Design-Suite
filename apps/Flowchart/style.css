@@ -318,11 +318,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
 .settings-row label {
   font-size: 13px;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
 
 /* Button Group / Actions */
@@ -466,6 +468,10 @@ body {
   transition: fill var(--transition-normal);
 }
 
+.node-text tspan {
+  dominant-baseline: alphabetic;
+}
+
 /* Floating Toolbar */
 .floating-toolbar {
   position: absolute;
@@ -553,6 +559,8 @@ body {
   border: 1px solid var(--panel-border);
   background-color: var(--bg-color);
   padding: 2px;
+  flex-shrink: 0;
+  border-radius: 4px;
 }
 
 .selector-option {
@@ -564,6 +572,8 @@ body {
   border: none;
   color: var(--text-secondary);
   transition: all var(--transition-fast);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .selector-option:hover {
@@ -932,6 +942,21 @@ body {
   stroke: var(--accent-color) !important;
   stroke-width: 2.5px !important;
 }
+
+/* Resize Handles */
+.resize-handle {
+  fill: #ffffff;
+  stroke: var(--accent-color);
+  stroke-width: 1.5px;
+  cursor: pointer;
+}
+.resize-handle:hover {
+  fill: var(--accent-color);
+}
+.resize-handle[data-dir="nw"], .resize-handle[data-dir="se"] { cursor: nwse-resize; }
+.resize-handle[data-dir="ne"], .resize-handle[data-dir="sw"] { cursor: nesw-resize; }
+.resize-handle[data-dir="n"], .resize-handle[data-dir="s"] { cursor: ns-resize; }
+.resize-handle[data-dir="e"], .resize-handle[data-dir="w"] { cursor: ew-resize; }
 
 /* Custom styled color picker inputs to look like premium color buttons */
 .color-picker-input {
