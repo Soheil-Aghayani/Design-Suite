@@ -1423,6 +1423,13 @@ function renderSVG() {
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "path");
         const ry = 6;
         shapeEl.setAttribute("d", `M ${left} ${top + ry} A ${NODE_WIDTH/2} ${ry} 0 0 1 ${right} ${top + ry} V ${bottom - ry} A ${NODE_WIDTH/2} ${ry} 0 0 1 ${left} ${bottom - ry} Z M ${left} ${top + ry} A ${NODE_WIDTH/2} ${ry} 0 0 0 ${right} ${top + ry}`);
+      } else if (shapeType === "roundrect") {
+        shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        shapeEl.setAttribute("x", left);
+        shapeEl.setAttribute("y", top);
+        shapeEl.setAttribute("width", NODE_WIDTH);
+        shapeEl.setAttribute("height", NODE_HEIGHT);
+        shapeEl.setAttribute("rx", node.rx !== undefined ? node.rx : 15);
       } else {
         // default "rect"
         shapeEl = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -1527,6 +1534,9 @@ function renderSVG() {
       text.style.fontWeight = node.fontWeight || "500";
       text.style.fontStyle = node.fontStyle || "normal";
       text.style.textDecoration = node.textDecoration || "none";
+      if (node.fontFamily) {
+        text.style.fontFamily = node.fontFamily;
+      }
 
       wrapSVGText(text, node.label, NODE_WIDTH - 20, node.fontSize || 12);
 
@@ -2048,6 +2058,7 @@ function renderMultiSelectionPanel() {
   const shapeSelect = styleWrapper.querySelector("#bulk-shape-select");
   const radiusContainer = styleWrapper.querySelector("#bulk-radius-container");
   
+  const fontSelect = styleWrapper.querySelector("#bulk-font-family-select");
   const textSizeSlider = styleWrapper.querySelector("#bulk-text-size-slider");
   const textSizeVal = styleWrapper.querySelector("#bulk-text-size-val");
   const boldBtn = styleWrapper.querySelector("#bulk-btn-bold");
@@ -2098,6 +2109,18 @@ function renderMultiSelectionPanel() {
       state.columns.forEach(col => {
         let node = col.nodes.find(n => n.id === id);
         if (node) node.shape = val;
+      });
+    });
+    renderSVG();
+    saveData();
+  });
+
+  fontSelect.addEventListener("change", (e) => {
+    const val = e.target.value;
+    selectedNodeIds.forEach(id => {
+      state.columns.forEach(col => {
+        let node = col.nodes.find(n => n.id === id);
+        if (node) node.fontFamily = val;
       });
     });
     renderSVG();
@@ -2843,6 +2866,19 @@ function renderSidebarSelection() {
       <!-- Text size & styling -->
       <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: 4px;">
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Font</span>
+          <select id="node-font-family-select" style="flex: 1; padding: 4px 8px; font-size: 11px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none;">
+            <option value="" ${!selectedNode.fontFamily ? "selected" : ""}>Default</option>
+            <option value="Inter, sans-serif" ${selectedNode.fontFamily === "Inter, sans-serif" ? "selected" : ""}>Inter (Sans)</option>
+            <option value="Outfit, sans-serif" ${selectedNode.fontFamily === "Outfit, sans-serif" ? "selected" : ""}>Outfit</option>
+            <option value="'JetBrains Mono', monospace" ${selectedNode.fontFamily === "'JetBrains Mono', monospace" ? "selected" : ""}>JetBrains Mono</option>
+            <option value="Arial, sans-serif" ${selectedNode.fontFamily === "Arial, sans-serif" ? "selected" : ""}>Arial</option>
+            <option value="'Times New Roman', serif" ${selectedNode.fontFamily === "'Times New Roman', serif" ? "selected" : ""}>Times New Roman</option>
+            <option value="'Courier New', monospace" ${selectedNode.fontFamily === "'Courier New', monospace" ? "selected" : ""}>Courier New</option>
+            <option value="'Comic Sans MS', cursive" ${selectedNode.fontFamily === "'Comic Sans MS', cursive" ? "selected" : ""}>Comic Sans MS</option>
+          </select>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
           <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Text Size</span>
           <input type="range" id="node-text-size-slider" min="10" max="24" value="${selectedNode.fontSize || 12}" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
           <span id="node-text-size-val" style="font-size: 10px; font-family: var(--font-mono); color: var(--text-primary); width: 32px; text-align: right;">${selectedNode.fontSize || 12}px</span>
@@ -2901,6 +2937,7 @@ function renderSidebarSelection() {
   const shapeSelect = styleWrapper.querySelector("#node-shape-select");
   const radiusContainer = styleWrapper.querySelector("#node-radius-container");
   
+  const fontSelect = styleWrapper.querySelector("#node-font-family-select");
   const textSizeSlider = styleWrapper.querySelector("#node-text-size-slider");
   const textSizeVal = styleWrapper.querySelector("#node-text-size-val");
   const boldBtn = styleWrapper.querySelector("#node-btn-bold");
@@ -2946,6 +2983,13 @@ function renderSidebarSelection() {
     const val = e.target.value;
     updateRadiusVisibility(val);
     selectedNode.shape = val;
+    renderSVG();
+    saveData();
+  });
+
+  fontSelect.addEventListener("change", (e) => {
+    const val = e.target.value;
+    selectedNode.fontFamily = val;
     renderSVG();
     saveData();
   });
