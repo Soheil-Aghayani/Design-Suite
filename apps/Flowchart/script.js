@@ -690,6 +690,7 @@ function wrapSVGText(textEl, label, maxWidth, fontSize) {
     tspan.setAttribute("x", textEl.getAttribute("x"));
     tspan.setAttribute("y", startY + idx * lineHeight);
     tspan.setAttribute("text-anchor", "middle");
+    tspan.setAttribute("dominant-baseline", "alphabetic");
     tspan.textContent = lineText;
     textEl.appendChild(tspan);
   });
