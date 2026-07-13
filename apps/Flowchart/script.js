@@ -638,6 +638,34 @@ function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor
   return { x1, y1, x2, y2, resolvedSourceAnchor, resolvedTargetAnchor };
 }
 
+// Unicode formatting for subscripts/superscripts
+const SUPER_MAP = {
+  '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹',
+  '+':'⁺','-':'⁻','=':'⁼','(':'⁽',')':'⁾',
+  'a':'ᵃ','b':'ᵇ','c':'ᶜ','d':'ᵈ','e':'ᵉ','f':'ᶠ','g':'ᵍ','h':'ʰ','i':'ⁱ','j':'ʲ','k':'ᵏ','l':'ˡ','m':'ᵐ','n':'ⁿ','o':'ᵒ','p':'ᵖ','r':'ʳ','s':'ˢ','t':'ᵗ','u':'ᵘ','v':'ᵛ','w':'ʷ','x':'ˣ','y':'ʸ','z':'ᶻ'
+};
+const SUB_MAP = {
+  '0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉',
+  '+':'₊','-':'₋','=':'₌','(':'₍',')':'₎',
+  'a':'ₐ','e':'ₑ','h':'ₕ','i':'ᵢ','j':'ⱼ','k':'ₖ','l':'ₗ','m':'ₘ','n':'ₙ','o':'ₒ','p':'ₚ','r':'ᵣ','s':'ₛ','t':'ₜ','u':'ᵤ','v':'ᵥ','x':'ₓ'
+};
+const REVERSE_MAP = {};
+Object.keys(SUPER_MAP).forEach(k => REVERSE_MAP[SUPER_MAP[k]] = k);
+Object.keys(SUB_MAP).forEach(k => REVERSE_MAP[SUB_MAP[k]] = k);
+
+function toggleUnicodeScript(text, mode) {
+  const map = mode === 'super' ? SUPER_MAP : SUB_MAP;
+  let allMapped = true;
+  for(let i=0; i<text.length; i++) {
+    if(!REVERSE_MAP[text[i]]) { allMapped = false; break; }
+  }
+  if(allMapped) {
+    return text.split('').map(c => REVERSE_MAP[c] || c).join('');
+  } else {
+    return text.split('').map(c => map[c] || c).join('');
+  }
+}
+
 // Auto-wrap SVG text labels into multi-line tspans dynamically
 function wrapSVGText(textEl, label, maxWidth, fontSize) {
   textEl.innerHTML = "";
@@ -2692,7 +2720,13 @@ function renderSidebarSelection() {
   const labelWrapper = document.createElement("div");
   labelWrapper.className = "input-field-wrapper";
   labelWrapper.innerHTML = `
-    <label>Box Label</label>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px;">
+      <label style="margin-bottom: 0;">Box Label</label>
+      <div style="display: flex; gap: 4px;">
+        <button id="node-btn-sub" title="Subscript (select text first)" style="font-size: 10px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">x₂</button>
+        <button id="node-btn-super" title="Superscript (select text first)" style="font-size: 10px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">x²</button>
+      </div>
+    </div>
     <input type="text" class="text-input" id="edit-node-label" value="${selectedNode.label}" placeholder="Type label..." autocomplete="off">
   `;
   
@@ -2711,6 +2745,32 @@ function renderSidebarSelection() {
     
     saveData();
   });
+  
+  const btnSub = labelWrapper.querySelector("#node-btn-sub");
+  const btnSuper = labelWrapper.querySelector("#node-btn-super");
+
+  const applyScriptToSelection = (mode) => {
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+    if (start === end) return; // Need selection
+    
+    const text = inputEl.value;
+    const selectedText = text.substring(start, end);
+    const newText = toggleUnicodeScript(selectedText, mode);
+    
+    inputEl.value = text.substring(0, start) + newText + text.substring(end);
+    selectedNode.label = inputEl.value;
+    
+    // Restore selection
+    inputEl.setSelectionRange(start, start + newText.length);
+    inputEl.focus();
+    
+    renderSVG();
+    saveData();
+  };
+
+  if (btnSub) btnSub.addEventListener("click", () => applyScriptToSelection('sub'));
+  if (btnSuper) btnSuper.addEventListener("click", () => applyScriptToSelection('super'));
   
   selectionSettingsContainer.appendChild(labelWrapper);
 
