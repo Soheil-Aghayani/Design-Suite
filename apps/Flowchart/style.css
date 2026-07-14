@@ -914,6 +914,72 @@ body {
   box-sizing: border-box;
 }
 
+.node-group.inline-editing .node-text {
+  visibility: hidden;
+}
+
+.connection-position-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.connection-position-control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.connection-position-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.connection-position-header output {
+  color: var(--text-primary);
+  font-size: 9px;
+  text-transform: none;
+}
+
+.connection-position-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) 62px 10px;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.connection-position-slider {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent-color);
+  cursor: pointer;
+}
+
+.connection-position-number {
+  width: 62px;
+  height: 26px;
+  padding: 2px 4px;
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.connection-position-unit {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
 /* Selection Marquee */
 .selection-marquee {
   position: absolute;
@@ -1161,6 +1227,37 @@ body {
   stroke-width: 14px;
   cursor: pointer;
   pointer-events: stroke;
+}
+
+.connection-anchor-handle {
+  fill: #ffffff;
+  stroke: #2563eb;
+  stroke-width: 2px;
+  cursor: grab;
+  pointer-events: all;
+  filter: drop-shadow(0 1px 2px rgba(37, 99, 235, 0.35));
+}
+
+.connection-anchor-handle.target {
+  fill: #2563eb;
+}
+
+.connection-anchor-handle.snapped-90 {
+  stroke: #16a34a;
+  stroke-width: 3px;
+}
+
+.connection-anchor-handle.target.snapped-90 {
+  fill: #16a34a;
+}
+
+.connection-anchor-handle:active {
+  cursor: grabbing;
+}
+
+.selection-format-toolbar {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 /* Mini-Map Navigator Overlay */

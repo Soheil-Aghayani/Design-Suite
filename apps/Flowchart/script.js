@@ -73,7 +73,8 @@ const DEFAULT_STATE = {
   ],
   strokeWidth: 1.0,
   lineStyle: "solid",
-  lineShape: "straight",
+  lineShape: "orthogonal",
+  routingVersion: 2,
   chartTitle: "",
   showColumnTitles: true,
   showColumnGuides: true,
@@ -416,6 +417,7 @@ let resizeNodeId = null;
 let resizeDirection = null;
 let resizeStartMouse = null;
 let resizeStartBounds = null;
+let pendingNodeClickTimer = null;
 
 // 3. DOM Elements
 const svgEl = document.getElementById("flowchart-svg");
@@ -446,6 +448,7 @@ const moonIcon = document.getElementById("moon-icon");
 // Tool elements
 const canvasContainer = document.querySelector(".canvas-container");
 const toolSelectBtn = document.getElementById("tool-select");
+const toolPanBtn = document.getElementById("tool-pan");
 const toolConnectBtn = document.getElementById("tool-connect");
 
 // Font and Search elements
@@ -590,7 +593,7 @@ function getNodeY(nodeIndex, totalNodes) {
 }
 
 // Compute exit/entry interface points between two boxes, respecting custom anchors
-function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor = "auto", sourceNode = null, targetNode = null) {
+function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor = "auto", sourceNode = null, targetNode = null, sourcePosition = 0.5, targetPosition = 0.5) {
   const sx = Math.round(source.x);
   const sy = Math.round(source.y);
   const tx = Math.round(target.x);
@@ -652,35 +655,39 @@ function getConnectionPoints(source, target, sourceAnchor = "auto", targetAnchor
     }
   }
 
-  // 2. Compute final points using resolved anchors
+  // 2. Compute final points using resolved anchors. Position is a normalized
+  // percentage along the chosen edge, allowing a connector to attach anywhere
+  // on the perimeter instead of only at the center of an edge.
+  const sPos = Math.max(0, Math.min(1, Number(sourcePosition) || 0));
+  const tPos = Math.max(0, Math.min(1, Number(targetPosition) || 0));
   let x1, y1, x2, y2;
 
   if (resolvedSourceAnchor === "top") {
-    x1 = sx;
+    x1 = sx - sHalfW + sW * sPos;
     y1 = sy - sHalfH;
   } else if (resolvedSourceAnchor === "bottom") {
-    x1 = sx;
+    x1 = sx - sHalfW + sW * sPos;
     y1 = sy + sHalfH;
   } else if (resolvedSourceAnchor === "left") {
     x1 = sx - sHalfW;
-    y1 = sy;
+    y1 = sy - sHalfH + sH * sPos;
   } else { // right
     x1 = sx + sHalfW;
-    y1 = sy;
+    y1 = sy - sHalfH + sH * sPos;
   }
 
   if (resolvedTargetAnchor === "top") {
-    x2 = tx;
+    x2 = tx - tHalfW + tW * tPos;
     y2 = ty - tHalfH;
   } else if (resolvedTargetAnchor === "bottom") {
-    x2 = tx;
+    x2 = tx - tHalfW + tW * tPos;
     y2 = ty + tHalfH;
   } else if (resolvedTargetAnchor === "left") {
     x2 = tx - tHalfW;
-    y2 = ty;
+    y2 = ty - tHalfH + tH * tPos;
   } else { // right
     x2 = tx + tHalfW;
-    y2 = ty;
+    y2 = ty - tHalfH + tH * tPos;
   }
 
   return {
@@ -721,8 +728,285 @@ function toggleUnicodeScript(text, mode) {
   }
 }
 
-// Auto-wrap SVG text labels into multi-line tspans dynamically
-function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE_HEIGHT, textAlign = "center", verticalAlign = "middle") {
+function normalizeTextRuns(label, runs) {
+  const text = label || "";
+  if (!Array.isArray(runs) || runs.length === 0) {
+    return text ? [{ text }] : [];
+  }
+
+  const normalized = [];
+  let consumed = 0;
+  runs.forEach(run => {
+    if (!run || typeof run.text !== "string" || !run.text) return;
+    const remaining = text.slice(consumed);
+    const runText = remaining.startsWith(run.text) ? run.text : remaining.slice(0, run.text.length);
+    if (!runText) return;
+    const clean = { text: runText };
+    if (run.bold) clean.bold = true;
+    if (run.italic) clean.italic = true;
+    if (run.underline) clean.underline = true;
+    if (run.script === "super" || run.script === "sub") clean.script = run.script;
+    normalized.push(clean);
+    consumed += runText.length;
+  });
+  if (consumed < text.length) normalized.push({ text: text.slice(consumed) });
+  return normalized;
+}
+
+function ensureConnectorMarker(defsEl, id, color, type) {
+  if (!defsEl || type === "none") return null;
+  const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+  marker.setAttribute("id", id);
+  marker.setAttribute("class", "dynamic-connector-marker");
+  marker.setAttribute("viewBox", "0 0 10 10");
+  marker.setAttribute("markerWidth", "9");
+  marker.setAttribute("markerHeight", "9");
+  marker.setAttribute("markerUnits", "userSpaceOnUse");
+  marker.setAttribute("orient", "auto-start-reverse");
+
+  if (type === "dot") {
+    marker.setAttribute("refX", "5");
+    marker.setAttribute("refY", "5");
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", "5");
+    circle.setAttribute("cy", "5");
+    circle.setAttribute("r", "3");
+    circle.setAttribute("fill", color);
+    marker.appendChild(circle);
+  } else {
+    marker.setAttribute("refX", "9");
+    marker.setAttribute("refY", "5");
+    const arrow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    arrow.setAttribute("d", "M 0 1 L 9 5 L 0 9 Z");
+    arrow.setAttribute("fill", color);
+    marker.appendChild(arrow);
+  }
+  defsEl.appendChild(marker);
+  return id;
+}
+
+function getPointerInSVG(event) {
+  const point = svgEl.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  const matrix = svgEl.getScreenCTM();
+  return matrix ? point.matrixTransform(matrix.inverse()) : { x: 0, y: 0 };
+}
+
+function getNearestPerimeterAnchor(node, pos, pointer) {
+  const w = node.width || NODE_WIDTH;
+  const h = node.height || NODE_HEIGHT;
+  const left = pos.x - w / 2;
+  const right = pos.x + w / 2;
+  const top = pos.y - h / 2;
+  const bottom = pos.y + h / 2;
+  const distances = [
+    { anchor: "top", distance: Math.abs(pointer.y - top), position: (pointer.x - left) / w },
+    { anchor: "bottom", distance: Math.abs(pointer.y - bottom), position: (pointer.x - left) / w },
+    { anchor: "left", distance: Math.abs(pointer.x - left), position: (pointer.y - top) / h },
+    { anchor: "right", distance: Math.abs(pointer.x - right), position: (pointer.y - top) / h }
+  ];
+  distances.sort((a, b) => a.distance - b.distance);
+  return {
+    anchor: distances[0].anchor,
+    position: Math.max(0.02, Math.min(0.98, distances[0].position))
+  };
+}
+
+function alignConnectionEndpoints(sourceId, targetId) {
+  const sourceNode = findNodeById(sourceId);
+  const targetNode = findNodeById(targetId);
+  const sourcePos = nodeCoords[sourceId];
+  const targetPos = nodeCoords[targetId];
+  const targetObj = getOrCreateTargetObj(sourceId, targetId);
+  if (!sourceNode || !targetNode || !sourcePos || !targetPos || !targetObj) return null;
+
+  const points = getConnectionPoints(
+    sourcePos,
+    targetPos,
+    targetObj.sourceAnchor || "auto",
+    targetObj.targetAnchor || "auto",
+    sourceNode,
+    targetNode,
+    targetObj.sourcePosition !== undefined ? targetObj.sourcePosition : 0.5,
+    targetObj.targetPosition !== undefined ? targetObj.targetPosition : 0.5
+  );
+  const sourceVerticalEdge = points.resolvedSourceAnchor === "top" || points.resolvedSourceAnchor === "bottom";
+  const targetVerticalEdge = points.resolvedTargetAnchor === "top" || points.resolvedTargetAnchor === "bottom";
+  const sourceHorizontalEdge = points.resolvedSourceAnchor === "left" || points.resolvedSourceAnchor === "right";
+  const targetHorizontalEdge = points.resolvedTargetAnchor === "left" || points.resolvedTargetAnchor === "right";
+
+  if (sourceVerticalEdge && targetVerticalEdge) {
+    const targetWidth = targetNode.width || NODE_WIDTH;
+    const targetLeft = targetPos.x - targetWidth / 2;
+    if (points.x1 >= targetLeft && points.x1 <= targetLeft + targetWidth) {
+      targetObj.targetPosition = (points.x1 - targetLeft) / targetWidth;
+    } else {
+      const sourceWidth = sourceNode.width || NODE_WIDTH;
+      const sourceLeft = sourcePos.x - sourceWidth / 2;
+      if (points.x2 < sourceLeft || points.x2 > sourceLeft + sourceWidth) return null;
+      targetObj.sourcePosition = (points.x2 - sourceLeft) / sourceWidth;
+    }
+    targetObj.sourceAnchor = points.resolvedSourceAnchor;
+    targetObj.targetAnchor = points.resolvedTargetAnchor;
+    return "vertical";
+  }
+
+  if (sourceHorizontalEdge && targetHorizontalEdge) {
+    const targetHeight = targetNode.height || NODE_HEIGHT;
+    const targetTop = targetPos.y - targetHeight / 2;
+    if (points.y1 >= targetTop && points.y1 <= targetTop + targetHeight) {
+      targetObj.targetPosition = (points.y1 - targetTop) / targetHeight;
+    } else {
+      const sourceHeight = sourceNode.height || NODE_HEIGHT;
+      const sourceTop = sourcePos.y - sourceHeight / 2;
+      if (points.y2 < sourceTop || points.y2 > sourceTop + sourceHeight) return null;
+      targetObj.sourcePosition = (points.y2 - sourceTop) / sourceHeight;
+    }
+    targetObj.sourceAnchor = points.resolvedSourceAnchor;
+    targetObj.targetAnchor = points.resolvedTargetAnchor;
+    return "horizontal";
+  }
+
+  return null;
+}
+
+function startConnectionAnchorDrag(event, sourceId, targetId, endpoint) {
+  event.preventDefault();
+  event.stopPropagation();
+  const sourceNode = findNodeById(sourceId);
+  const targetNode = findNodeById(targetId);
+  const targetObj = getOrCreateTargetObj(sourceId, targetId);
+  if (!sourceNode || !targetNode || !targetObj) return;
+  pushState();
+
+  const move = moveEvent => {
+    const isSource = endpoint === "source";
+    const node = isSource ? sourceNode : targetNode;
+    const pos = nodeCoords[isSource ? sourceId : targetId];
+    if (!pos) return;
+    const pointer = getPointerInSVG(moveEvent);
+    const nearest = getNearestPerimeterAnchor(node, pos, pointer);
+    const currentPoints = getConnectionPoints(
+      nodeCoords[sourceId],
+      nodeCoords[targetId],
+      targetObj.sourceAnchor || "auto",
+      targetObj.targetAnchor || "auto",
+      sourceNode,
+      targetNode,
+      targetObj.sourcePosition !== undefined ? targetObj.sourcePosition : 0.5,
+      targetObj.targetPosition !== undefined ? targetObj.targetPosition : 0.5
+    );
+    const otherAnchor = isSource ? currentPoints.resolvedTargetAnchor : currentPoints.resolvedSourceAnchor;
+    const otherX = isSource ? currentPoints.x2 : currentPoints.x1;
+    const otherY = isSource ? currentPoints.y2 : currentPoints.y1;
+    const w = node.width || NODE_WIDTH;
+    const h = node.height || NODE_HEIGHT;
+    const left = pos.x - w / 2;
+    const top = pos.y - h / 2;
+    // Use a screen-space snap tolerance so axis snapping feels the same at any zoom.
+    const axisSnapTolerance = 24 / Math.max(zoom, 0.1);
+    if ((nearest.anchor === "top" || nearest.anchor === "bottom") && (otherAnchor === "top" || otherAnchor === "bottom") && Math.abs(pointer.x - otherX) <= axisSnapTolerance && otherX >= left && otherX <= left + w) {
+      nearest.position = (otherX - left) / w;
+    } else if ((nearest.anchor === "left" || nearest.anchor === "right") && (otherAnchor === "left" || otherAnchor === "right") && Math.abs(pointer.y - otherY) <= axisSnapTolerance && otherY >= top && otherY <= top + h) {
+      nearest.position = (otherY - top) / h;
+    }
+    targetObj[isSource ? "sourceAnchor" : "targetAnchor"] = nearest.anchor;
+    targetObj[isSource ? "sourcePosition" : "targetPosition"] = nearest.position;
+    renderSVG();
+  };
+  const end = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", end);
+    saveData();
+    renderSidebarSelection();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", end, { once: true });
+}
+
+function textRunsToCharacters(label, runs) {
+  const chars = [];
+  normalizeTextRuns(label, runs).forEach(run => {
+    [...run.text].forEach(char => chars.push({
+      char,
+      bold: !!run.bold,
+      italic: !!run.italic,
+      underline: !!run.underline,
+      script: run.script || null
+    }));
+  });
+  return chars;
+}
+
+function charactersToTextRuns(chars) {
+  const runs = [];
+  chars.forEach(item => {
+    const styleKey = `${item.bold ? 1 : 0}${item.italic ? 1 : 0}${item.underline ? 1 : 0}:${item.script || ""}`;
+    const previous = runs[runs.length - 1];
+    if (previous && previous._styleKey === styleKey) {
+      previous.text += item.char;
+      return;
+    }
+    const run = { text: item.char, _styleKey: styleKey };
+    if (item.bold) run.bold = true;
+    if (item.italic) run.italic = true;
+    if (item.underline) run.underline = true;
+    if (item.script) run.script = item.script;
+    runs.push(run);
+  });
+  runs.forEach(run => delete run._styleKey);
+  return runs;
+}
+
+function applyTextStyleToRange(node, start, end, styleName) {
+  if (!node || start === end) return false;
+  const chars = textRunsToCharacters(node.label || "", node.textRuns);
+  const selected = chars.slice(start, end);
+  if (!selected.length) return false;
+  const isScript = styleName === "super" || styleName === "sub";
+  const shouldEnable = isScript
+    ? !selected.every(item => item.script === styleName)
+    : !selected.every(item => !!item[styleName]);
+
+  for (let i = start; i < end && i < chars.length; i++) {
+    if (isScript) chars[i].script = shouldEnable ? styleName : null;
+    else chars[i][styleName] = shouldEnable;
+  }
+  node.textRuns = charactersToTextRuns(chars);
+  return true;
+}
+
+function reconcileTextRuns(node, oldLabel, newLabel) {
+  const oldChars = textRunsToCharacters(oldLabel || "", node.textRuns);
+  let prefix = 0;
+  while (prefix < oldLabel.length && prefix < newLabel.length && oldLabel[prefix] === newLabel[prefix]) prefix++;
+  let suffix = 0;
+  while (
+    suffix < oldLabel.length - prefix && suffix < newLabel.length - prefix &&
+    oldLabel[oldLabel.length - 1 - suffix] === newLabel[newLabel.length - 1 - suffix]
+  ) suffix++;
+
+  const insertedText = newLabel.slice(prefix, newLabel.length - suffix);
+  const inherited = oldChars[Math.max(0, prefix - 1)] || oldChars[prefix] || {};
+  const inserted = [...insertedText].map(char => ({
+    char,
+    bold: !!inherited.bold,
+    italic: !!inherited.italic,
+    underline: !!inherited.underline,
+    script: inherited.script || null
+  }));
+  const merged = oldChars.slice(0, prefix).concat(inserted, suffix ? oldChars.slice(oldChars.length - suffix) : []);
+  node.textRuns = charactersToTextRuns(merged);
+}
+
+function getRunsForRange(label, runs, start, end) {
+  return charactersToTextRuns(textRunsToCharacters(label, runs).slice(start, end));
+}
+
+// Auto-wrap SVG text labels into multi-line tspans dynamically, preserving
+// selection-level bold, italic, underline, superscript and subscript runs.
+function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE_HEIGHT, textAlign = "center", verticalAlign = "middle", textRuns = null, paddingX = 10, paddingY = 8) {
   textEl.innerHTML = "";
   if (!label || label.trim() === "") return;
 
@@ -731,42 +1015,53 @@ function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE
   const words = label.split(" ");
   const lines = [];
   let currentLine = "";
+  let currentStart = 0;
+  let searchFrom = 0;
 
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
     if (word.length * charWidth > maxWidth) {
       if (currentLine) {
-        lines.push(currentLine);
+        lines.push({ text: currentLine, start: currentStart, end: currentStart + currentLine.length });
         currentLine = "";
       }
       let rem = word;
+      let remStart = label.indexOf(word, searchFrom);
       while (rem.length > 0) {
         const chunk = rem.substring(0, maxChars);
-        lines.push(chunk);
+        lines.push({ text: chunk, start: remStart, end: remStart + chunk.length });
+        remStart += chunk.length;
         rem = rem.substring(maxChars);
       }
+      searchFrom = remStart;
       continue;
     }
 
     const testLine = currentLine ? currentLine + " " + word : word;
     if (testLine.length * charWidth > maxWidth) {
-      lines.push(currentLine);
+      lines.push({ text: currentLine, start: currentStart, end: currentStart + currentLine.length });
+      currentStart = label.indexOf(word, searchFrom);
       currentLine = word;
     } else {
+      if (!currentLine) currentStart = label.indexOf(word, searchFrom);
       currentLine = testLine;
     }
+    searchFrom = currentStart + currentLine.length;
   }
   if (currentLine) {
-    lines.push(currentLine);
+    lines.push({ text: currentLine, start: currentStart, end: currentStart + currentLine.length });
   }
 
   const lineHeight = fontSize * 1.25;
-  const maxLines = Math.floor((h - 8) / lineHeight) || 1;
+  const safePaddingX = Math.max(0, Math.min(w / 2 - 1, Number(paddingX) || 0));
+  const safePaddingY = Math.max(0, Math.min(h / 2 - 1, Number(paddingY) || 0));
+  const maxLines = Math.max(1, Math.floor((h - safePaddingY * 2) / lineHeight));
   if (lines.length > maxLines) {
     lines.splice(maxLines);
     if (lines.length > 0) {
       const lastLine = lines[lines.length - 1];
-      lines[lines.length - 1] = lastLine.substring(0, Math.max(0, lastLine.length - 3)) + "...";
+      const shortened = lastLine.text.substring(0, Math.max(0, lastLine.text.length - 3)) + "...";
+      lines[lines.length - 1] = { ...lastLine, text: shortened, end: lastLine.start + shortened.length };
     }
   }
 
@@ -781,9 +1076,9 @@ function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE
   let startY;
   const capHeightOffset = fontSize * 0.35;
   if (verticalAlign === "top") {
-    startY = top + 8 + capHeightOffset;
+    startY = top + safePaddingY + capHeightOffset;
   } else if (verticalAlign === "bottom") {
-    startY = bottom - totalHeight - 8 + (lineHeight / 2) + capHeightOffset;
+    startY = bottom - totalHeight - safePaddingY + (lineHeight / 2) + capHeightOffset;
   } else {
     startY = centerY - (totalHeight / 2) + (lineHeight / 2) + capHeightOffset;
   }
@@ -792,20 +1087,34 @@ function wrapSVGText(textEl, label, maxWidth, fontSize, w = NODE_WIDTH, h = NODE
   let tspanX = centerX;
   if (textAlign === "left") {
     textAnchor = "start";
-    tspanX = left + 10;
+    tspanX = left + safePaddingX;
   } else if (textAlign === "right") {
     textAnchor = "end";
-    tspanX = right - 10;
+    tspanX = right - safePaddingX;
   }
 
-  lines.forEach((lineText, idx) => {
-    const tspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
-    tspan.setAttribute("x", tspanX);
-    tspan.setAttribute("y", startY + idx * lineHeight);
-    tspan.setAttribute("text-anchor", textAnchor);
-    tspan.setAttribute("dominant-baseline", "alphabetic");
-    tspan.textContent = lineText;
-    textEl.appendChild(tspan);
+  lines.forEach((line, idx) => {
+    const lineSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+    lineSpan.setAttribute("x", tspanX);
+    lineSpan.setAttribute("y", startY + idx * lineHeight);
+    lineSpan.setAttribute("text-anchor", textAnchor);
+    lineSpan.setAttribute("dominant-baseline", "alphabetic");
+    lineSpan.setAttribute("xml:space", "preserve");
+
+    const lineRuns = textRuns ? getRunsForRange(label, textRuns, line.start, line.end) : [{ text: line.text }];
+    lineRuns.forEach(run => {
+      const runSpan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+      runSpan.textContent = run.text;
+      if (run.bold) runSpan.setAttribute("font-weight", "700");
+      if (run.italic) runSpan.setAttribute("font-style", "italic");
+      if (run.underline) runSpan.setAttribute("text-decoration", "underline");
+      if (run.script) {
+        runSpan.setAttribute("baseline-shift", run.script);
+        runSpan.setAttribute("font-size", "72%");
+      }
+      lineSpan.appendChild(runSpan);
+    });
+    textEl.appendChild(lineSpan);
   });
 }
 
@@ -865,13 +1174,28 @@ function getConnectorPath(x1, y1, x2, y2, sourceAnchor, targetAnchor, isVertical
       { x: x2, y: y2 }
     ];
   } else if (!exitH && !entryH) {
-    const midY = (y1 + y2) / 2 + lineOffset;
-    points = [
-      { x: x1, y: y1 },
-      { x: x1, y: midY },
-      { x: x2, y: midY },
-      { x: x2, y: y2 }
-    ];
+    // If source is bottom and target is top, but target is actually above source, route around it
+    if (sourceAnchor === "bottom" && targetAnchor === "top" && y2 < y1) {
+      const midY1 = y1 + 20 + lineOffset;
+      const midY2 = y2 - 20;
+      const midX = x1 + (x2 - x1) / 2 + 40; // Route to the side
+      points = [
+        { x: x1, y: y1 },
+        { x: x1, y: midY1 },
+        { x: midX, y: midY1 },
+        { x: midX, y: midY2 },
+        { x: x2, y: midY2 },
+        { x: x2, y: y2 }
+      ];
+    } else {
+      const midY = (y1 + y2) / 2 + lineOffset;
+      points = [
+        { x: x1, y: y1 },
+        { x: x1, y: midY },
+        { x: x2, y: midY },
+        { x: x2, y: y2 }
+      ];
+    }
   } else if (exitH && !entryH) {
     if (lineOffset === 0) {
       points = [
@@ -909,7 +1233,7 @@ function getConnectorPath(x1, y1, x2, y2, sourceAnchor, targetAnchor, isVertical
       ];
     }
   }
-  return drawRoundedPath(points, 12);
+  return drawRoundedPath(points, 0);
 }
 
 // Generate cubic Bezier path for curved lines
@@ -1058,28 +1382,32 @@ function getVerticalNodeX(nodeIdx, totalNodes) {
 function validateAndClampNode(node) {
   if (!node) return;
   if (node.width !== undefined) {
-    if (isNaN(node.width) || typeof node.width !== "number" || node.width <= 0) {
+    node.width = Number(node.width);
+    if (isNaN(node.width) || node.width <= 0) {
       node.width = NODE_WIDTH;
     } else {
       node.width = Math.max(20, Math.min(2000, node.width));
     }
   }
   if (node.height !== undefined) {
-    if (isNaN(node.height) || typeof node.height !== "number" || node.height <= 0) {
+    node.height = Number(node.height);
+    if (isNaN(node.height) || node.height <= 0) {
       node.height = NODE_HEIGHT;
     } else {
       node.height = Math.max(20, Math.min(2000, node.height));
     }
   }
   if (node.x !== undefined) {
-    if (isNaN(node.x) || typeof node.x !== "number") {
+    node.x = Number(node.x);
+    if (isNaN(node.x)) {
       delete node.x;
     } else {
       node.x = Math.max(-5000, Math.min(5000, node.x));
     }
   }
   if (node.y !== undefined) {
-    if (isNaN(node.y) || typeof node.y !== "number") {
+    node.y = Number(node.y);
+    if (isNaN(node.y)) {
       delete node.y;
     } else {
       node.y = Math.max(-5000, Math.min(5000, node.y));
@@ -1097,6 +1425,56 @@ function findNodeById(nodeId) {
     });
   });
   return found;
+}
+
+function getNonOverlappingClonePosition(sourceNode, sourceId, reservedClones = []) {
+  const sourcePos = nodeCoords[sourceId] || {
+    x: Number.isFinite(Number(sourceNode.x)) ? Number(sourceNode.x) : currentCanvasWidth / 2,
+    y: Number.isFinite(Number(sourceNode.y)) ? Number(sourceNode.y) : currentCanvasHeight / 2
+  };
+  const width = sourceNode.width || NODE_WIDTH;
+  const height = sourceNode.height || NODE_HEIGHT;
+  const gap = Math.max(20, state.gridEnabled ? (state.gridSize || 20) : 20);
+
+  const occupied = [];
+  state.columns.forEach(col => {
+    col.nodes.forEach(node => {
+      const pos = nodeCoords[node.id] || {
+        x: Number(node.x),
+        y: Number(node.y)
+      };
+      if (!Number.isFinite(pos.x) || !Number.isFinite(pos.y)) return;
+      occupied.push({
+        x: pos.x,
+        y: pos.y,
+        width: node.width || NODE_WIDTH,
+        height: node.height || NODE_HEIGHT
+      });
+    });
+  });
+  occupied.push(...reservedClones);
+
+  const isClear = candidate => occupied.every(item => {
+    const minimumX = (width + item.width) / 2 + gap;
+    const minimumY = (height + item.height) / 2 + gap;
+    return Math.abs(candidate.x - item.x) >= minimumX || Math.abs(candidate.y - item.y) >= minimumY;
+  });
+
+  for (let ring = 1; ring <= 20; ring += 1) {
+    const stepX = (width + gap) * ring;
+    const stepY = (height + gap) * ring;
+    const candidates = [
+      { x: sourcePos.x + stepX, y: sourcePos.y },
+      { x: sourcePos.x, y: sourcePos.y + stepY },
+      { x: sourcePos.x - stepX, y: sourcePos.y },
+      { x: sourcePos.x, y: sourcePos.y - stepY },
+      { x: sourcePos.x + stepX, y: sourcePos.y + stepY }
+    ];
+    const open = candidates.find(isClear);
+    if (open) return open;
+  }
+
+  return { x: sourcePos.x + width + gap, y: sourcePos.y + height + gap };
 }
 
 // Center-zoom focus to a specific node on the canvas
@@ -1177,6 +1555,7 @@ function renderSVG() {
   if (defsEl) {
     const existingGradients = defsEl.querySelectorAll("linearGradient, radialGradient");
     existingGradients.forEach(g => g.remove());
+    defsEl.querySelectorAll(".dynamic-connector-marker").forEach(marker => marker.remove());
   }
 
   // Set SVG viewBox and dimensions dynamically
@@ -1378,6 +1757,8 @@ function renderSVG() {
         const targetAnchor = isObj ? (targetVal.targetAnchor || "auto") : "auto";
         const markerType = isObj ? (targetVal.markerType || "arrow") : "arrow";
         const lineOffset = isObj ? (targetVal.lineOffset || 0) : 0;
+        const sourcePosition = isObj && targetVal.sourcePosition !== undefined ? targetVal.sourcePosition : 0.5;
+        const targetPosition = isObj && targetVal.targetPosition !== undefined ? targetVal.targetPosition : 0.5;
 
         const sourcePos = nodeCoords[node.id];
         const targetPos = nodeCoords[targetId];
@@ -1386,7 +1767,7 @@ function renderSVG() {
         if (!sourcePos || !targetPos) return;
 
         const targetNode = findNodeById(targetId);
-        const points = getConnectionPoints(sourcePos, targetPos, sourceAnchor, targetAnchor, node, targetNode);
+        const points = getConnectionPoints(sourcePos, targetPos, sourceAnchor, targetAnchor, node, targetNode, sourcePosition, targetPosition);
 
         const customShape = isObj ? (targetVal.lineShape || "auto") : "auto";
         const shape = customShape !== "auto" ? customShape : (state.lineShape || "orthogonal");
@@ -1417,11 +1798,17 @@ function renderSVG() {
         const isConnSelected = selectedConnector && 
                                selectedConnector.sourceId === node.id && 
                                selectedConnector.targetId === targetId;
+        const sourceOnVerticalEdge = points.resolvedSourceAnchor === "top" || points.resolvedSourceAnchor === "bottom";
+        const targetOnVerticalEdge = points.resolvedTargetAnchor === "top" || points.resolvedTargetAnchor === "bottom";
+        const sourceOnHorizontalEdge = points.resolvedSourceAnchor === "left" || points.resolvedSourceAnchor === "right";
+        const targetOnHorizontalEdge = points.resolvedTargetAnchor === "left" || points.resolvedTargetAnchor === "right";
+        const isAxisAligned = (sourceOnVerticalEdge && targetOnVerticalEdge && points.x1 === points.x2) ||
+                              (sourceOnHorizontalEdge && targetOnHorizontalEdge && points.y1 === points.y2);
 
         pathEl.setAttribute("d", pathData);
         
         const lineStyle = isObj && targetVal.strokeStyle ? targetVal.strokeStyle : state.lineStyle;
-        pathEl.setAttribute("class", `connector-line ${lineStyle === "dashed" ? "dashed" : ""} ${isConnSelected ? "selected" : ""}`);
+        pathEl.setAttribute("class", `connector-line ${lineStyle === "dashed" ? "dashed" : ""} ${isConnSelected ? "selected" : ""} ${isAxisAligned ? "axis-aligned" : ""}`);
         
         const themeColor = document.documentElement.getAttribute("data-theme") === "dark" ? "#a3a3a3" : "#171717";
         const strokeColor = isObj && targetVal.strokeColor ? targetVal.strokeColor : themeColor;
@@ -1431,12 +1818,10 @@ function renderSVG() {
         const strokeW = isObj && targetVal.strokeWidth ? targetVal.strokeWidth : state.strokeWidth;
         pathEl.style.strokeWidth = `${strokeW}px`;
         
-        if (markerType === "arrow") {
-          pathEl.setAttribute("marker-end", "url(#arrow)");
-        } else if (markerType === "dot") {
-          pathEl.setAttribute("marker-end", "url(#marker-dot)");
-        } else {
-          pathEl.removeAttribute("marker-end");
+        if (markerType !== "none") {
+          const markerId = `connector-marker-${node.id.replace(/[^a-zA-Z0-9_-]/g, "-")}-${String(targetId).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+          ensureConnectorMarker(defsEl, markerId, strokeColor, markerType);
+          pathEl.setAttribute("marker-end", `url(#${markerId})`);
         }
         
         pathEl.dataset.source = node.id;
@@ -1474,6 +1859,21 @@ function renderSVG() {
         });
         
         connectorsGroup.appendChild(overlay);
+
+        if (isConnSelected) {
+          [
+            { endpoint: "source", x: points.x1, y: points.y1 },
+            { endpoint: "target", x: points.x2, y: points.y2 }
+          ].forEach(handleData => {
+            const handle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            handle.setAttribute("class", `connection-anchor-handle ${handleData.endpoint} ${isAxisAligned ? "snapped-90" : ""}`);
+            handle.setAttribute("cx", handleData.x);
+            handle.setAttribute("cy", handleData.y);
+            handle.setAttribute("r", "6");
+            handle.addEventListener("pointerdown", event => startConnectionAnchorDrag(event, node.id, targetId, handleData.endpoint));
+            connectorsGroup.appendChild(handle);
+          });
+        }
 
         // Render connection line label if available
         if (isObj && targetVal.label && targetVal.label.trim() !== "") {
@@ -1549,6 +1949,7 @@ function renderSVG() {
 
       const isSelected = selectedNodeIds.has(node.id);
       const isConnectingSource = connectionSourceId === node.id;
+      const isInlineEditing = document.getElementById("active-inline-editor")?.dataset.nodeId === node.id;
 
       // Check if search query matches this node
       const searchQuery = nodeSearchInput ? nodeSearchInput.value.trim().toLowerCase() : "";
@@ -1558,7 +1959,7 @@ function renderSVG() {
       );
 
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-      g.setAttribute("class", `node-group ${isSelected ? "selected" : ""} ${isConnectingSource ? "connecting-source" : ""} ${isSearchMatch ? "search-match" : ""}`);
+      g.setAttribute("class", `node-group ${isSelected ? "selected" : ""} ${isConnectingSource ? "connecting-source" : ""} ${isSearchMatch ? "search-match" : ""} ${isInlineEditing ? "inline-editing" : ""}`);
       g.setAttribute("id", `node-${node.id}`);
       g.dataset.id = node.id;
 
@@ -1707,7 +2108,15 @@ function renderSVG() {
         text.style.fontFamily = node.fontFamily;
       }
 
-      wrapSVGText(text, node.label, w - 20, node.fontSize || 12, w, h, node.textAlign || "center", node.verticalAlign || "middle");
+      const textPaddingX = node.textPaddingX !== undefined ? node.textPaddingX : 10;
+      const textPaddingY = node.textPaddingY !== undefined ? node.textPaddingY : 8;
+      // Diamonds use a controllable central text area. The previous fixed 55%
+      // inset caused early ellipsis even in large decision shapes.
+      const diamondTextScale = node.diamondTextScale !== undefined ? node.diamondTextScale : 0.72;
+      const effectiveW = shapeType === "diamond" ? w * diamondTextScale : w;
+      const effectiveH = shapeType === "diamond" ? h * diamondTextScale : h;
+      const maxTextWidth = Math.max((node.fontSize || 12) * 0.6, effectiveW - textPaddingX * 2);
+      wrapSVGText(text, node.label, maxTextWidth, node.fontSize || 12, effectiveW, effectiveH, node.textAlign || "center", node.verticalAlign || "middle", node.textRuns, textPaddingX, textPaddingY);
 
       g.appendChild(shapeEl);
       g.appendChild(text);
@@ -1760,7 +2169,26 @@ function renderSVG() {
       g.addEventListener("click", (e) => {
         e.stopPropagation();
         if (isSpacePressed) return;
-        
+
+        // Keep the SVG target alive long enough to distinguish a single click
+        // from a double click. Selecting immediately would replace this group.
+        if (activeTool === "select" && e.detail === 1) {
+          const shiftKey = e.shiftKey;
+          if (pendingNodeClickTimer) window.clearTimeout(pendingNodeClickTimer);
+          pendingNodeClickTimer = window.setTimeout(() => {
+            pendingNodeClickTimer = null;
+            commitInlineEdit();
+            if (shiftKey) {
+              if (selectedNodeIds.has(node.id)) selectedNodeIds.delete(node.id);
+              else selectedNodeIds.add(node.id);
+              selectNode(null, false);
+            } else {
+              selectNode(node.id);
+            }
+          }, 180);
+          return;
+        }
+
         // Save any active inline edit before selection changes
         commitInlineEdit();
 
@@ -1782,14 +2210,6 @@ function renderSVG() {
         }
       });
 
-      // Double-click to edit text inside the box directly
-      g.addEventListener("dblclick", (e) => {
-        e.stopPropagation();
-        if (isSpacePressed) return;
-        if (activeTool === "select") {
-          startInlineEditing(node.id);
-        }
-      });
   });
   
   // Clear selection if clicking on empty canvas space
@@ -3027,7 +3447,10 @@ function renderSidebarSelection() {
   labelWrapper.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 4px;">
       <label style="margin-bottom: 0;">Box Label</label>
-      <div style="display: flex; gap: 4px;">
+      <div class="selection-format-toolbar" style="display: flex; gap: 4px;">
+        <button id="node-btn-selection-bold" title="Bold selected text" style="font-size: 10px; font-weight: 700; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">B</button>
+        <button id="node-btn-selection-italic" title="Italicize selected text" style="font-size: 10px; font-style: italic; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">I</button>
+        <button id="node-btn-selection-underline" title="Underline selected text" style="font-size: 10px; text-decoration: underline; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">U</button>
         <button id="node-btn-sub" title="Subscript (select text first)" style="font-size: 10px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">x₂</button>
         <button id="node-btn-super" title="Superscript (select text first)" style="font-size: 10px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); cursor: pointer; border-radius: 2px;">x²</button>
       </div>
@@ -3037,6 +3460,8 @@ function renderSidebarSelection() {
   
   const inputEl = labelWrapper.querySelector("input");
   inputEl.addEventListener("input", (e) => {
+    const oldLabel = selectedNode.label || "";
+    reconcileTextRuns(selectedNode, oldLabel, e.target.value);
     selectedNode.label = e.target.value;
     
     renderSVG();
@@ -3051,29 +3476,34 @@ function renderSidebarSelection() {
   
   const btnSub = labelWrapper.querySelector("#node-btn-sub");
   const btnSuper = labelWrapper.querySelector("#node-btn-super");
+  const btnSelectionBold = labelWrapper.querySelector("#node-btn-selection-bold");
+  const btnSelectionItalic = labelWrapper.querySelector("#node-btn-selection-italic");
+  const btnSelectionUnderline = labelWrapper.querySelector("#node-btn-selection-underline");
 
-  const applyScriptToSelection = (mode) => {
+  const applyStyleToSelection = (mode) => {
     const start = inputEl.selectionStart;
     const end = inputEl.selectionEnd;
-    if (start === end) return; // Need selection
-    
-    const text = inputEl.value;
-    const selectedText = text.substring(start, end);
-    const newText = toggleUnicodeScript(selectedText, mode);
-    
-    inputEl.value = text.substring(0, start) + newText + text.substring(end);
-    selectedNode.label = inputEl.value;
-    
-    // Restore selection
-    inputEl.setSelectionRange(start, start + newText.length);
+    if (start === end) {
+      showToast("Select the characters you want to format first");
+      inputEl.focus();
+      return;
+    }
+    pushState();
+    applyTextStyleToRange(selectedNode, start, end, mode);
+    inputEl.setSelectionRange(start, end);
     inputEl.focus();
-    
     renderSVG();
     saveData();
   };
 
-  if (btnSub) btnSub.addEventListener("click", () => applyScriptToSelection('sub'));
-  if (btnSuper) btnSuper.addEventListener("click", () => applyScriptToSelection('super'));
+  [btnSub, btnSuper, btnSelectionBold, btnSelectionItalic, btnSelectionUnderline].forEach(btn => {
+    if (btn) btn.addEventListener("mousedown", e => e.preventDefault());
+  });
+  if (btnSub) btnSub.addEventListener("click", () => applyStyleToSelection("sub"));
+  if (btnSuper) btnSuper.addEventListener("click", () => applyStyleToSelection("super"));
+  if (btnSelectionBold) btnSelectionBold.addEventListener("click", () => applyStyleToSelection("bold"));
+  if (btnSelectionItalic) btnSelectionItalic.addEventListener("click", () => applyStyleToSelection("italic"));
+  if (btnSelectionUnderline) btnSelectionUnderline.addEventListener("click", () => applyStyleToSelection("underline"));
   
   selectionSettingsContainer.appendChild(labelWrapper);
 
@@ -3251,11 +3681,42 @@ function renderSidebarSelection() {
           </div>
         </div>
 
-        <!-- Text Color -->
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-          <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Text</span>
-          <input type="color" class="color-picker-input" id="node-text-picker" value="${currentText}" style="width: 32px; height: 26px; flex-shrink: 0;">
-          <input type="text" class="text-input" id="node-text-hex" placeholder="#000000" style="padding: 4px 8px; font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; flex: 1; min-width: 0;">
+        <!-- Typography -->
+        <div style="display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: 4px;">
+          <span style="font-size: 10px; font-weight: 500; color: var(--text-primary);">Typography</span>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Font</span>
+            <select id="node-font-family" style="flex: 1; padding: 4px 8px; font-size: 11px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none;">
+              <option value="" ${!selectedNode.fontFamily ? "selected" : ""}>Default (Inter)</option>
+              <option value="Arial" ${selectedNode.fontFamily === "Arial" ? "selected" : ""}>Arial</option>
+              <option value="'Courier New', Courier, monospace" ${selectedNode.fontFamily === "'Courier New', Courier, monospace" ? "selected" : ""}>Courier New</option>
+              <option value="'Times New Roman', Times, serif" ${selectedNode.fontFamily === "'Times New Roman', Times, serif" ? "selected" : ""}>Times New Roman</option>
+              <option value="'Comic Sans MS', cursive" ${selectedNode.fontFamily === "'Comic Sans MS', cursive" ? "selected" : ""}>Comic Sans MS</option>
+              <option value="Impact, charcoal, sans-serif" ${selectedNode.fontFamily === "Impact, charcoal, sans-serif" ? "selected" : ""}>Impact</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Size</span>
+            <input type="number" id="node-font-size" class="text-input" value="${selectedNode.fontSize || 12}" min="6" max="72" style="padding: 4px 8px; font-size: 11px; flex: 1; min-width: 0;">
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Weight</span>
+            <select id="node-font-weight" style="flex: 1; padding: 4px 8px; font-size: 11px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none;">
+              <option value="400" ${selectedNode.fontWeight === "400" ? "selected" : ""}>Regular</option>
+              <option value="500" ${selectedNode.fontWeight === "500" || !selectedNode.fontWeight ? "selected" : ""}>Medium</option>
+              <option value="700" ${selectedNode.fontWeight === "700" ? "selected" : ""}>Bold</option>
+              <option value="900" ${selectedNode.fontWeight === "900" ? "selected" : ""}>Black</option>
+            </select>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Color</span>
+            <input type="color" class="color-picker-input" id="node-text-picker" value="${currentText}" style="width: 32px; height: 26px; flex-shrink: 0;">
+            <input type="text" class="text-input" id="node-text-hex" placeholder="#000000" style="padding: 4px 8px; font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; flex: 1; min-width: 0;">
+          </div>
         </div>
       </div>
 
@@ -3295,6 +3756,24 @@ function renderSidebarSelection() {
           <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 45px;">Text Size</span>
           <input type="range" id="node-text-size-slider" min="10" max="24" value="${selectedNode.fontSize || 12}" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
           <span id="node-text-size-val" style="font-size: 10px; font-family: var(--font-mono); color: var(--text-primary); width: 32px; text-align: right;">${selectedNode.fontSize || 12}px</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--panel-border); background: var(--bg-color);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 64px;">Margin X</span>
+            <input type="range" id="node-text-padding-x" min="0" max="40" step="1" value="${selectedNode.textPaddingX !== undefined ? selectedNode.textPaddingX : 10}" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
+            <input type="number" id="node-text-padding-x-val" min="0" max="40" step="1" value="${selectedNode.textPaddingX !== undefined ? selectedNode.textPaddingX : 10}" class="text-input" title="Horizontal text margin in pixels" style="font-size: 10px; font-family: var(--font-mono); width: 52px; height: 24px; padding: 2px 4px;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 64px;">Margin Y</span>
+            <input type="range" id="node-text-padding-y" min="0" max="40" step="1" value="${selectedNode.textPaddingY !== undefined ? selectedNode.textPaddingY : 8}" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
+            <input type="number" id="node-text-padding-y-val" min="0" max="40" step="1" value="${selectedNode.textPaddingY !== undefined ? selectedNode.textPaddingY : 8}" class="text-input" title="Vertical text margin in pixels" style="font-size: 10px; font-family: var(--font-mono); width: 52px; height: 24px; padding: 2px 4px;">
+          </div>
+          <div id="node-diamond-text-area-row" style="display: ${selectedNode.shape === 'diamond' ? 'flex' : 'none'}; align-items: center; gap: 8px;">
+            <span style="font-size: 9px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono); width: 64px;">Diamond Fit</span>
+            <input type="range" id="node-diamond-text-area" min="50" max="95" step="1" value="${Math.round((selectedNode.diamondTextScale !== undefined ? selectedNode.diamondTextScale : 0.72) * 100)}" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
+            <input type="number" id="node-diamond-text-area-val" min="50" max="95" step="1" value="${Math.round((selectedNode.diamondTextScale !== undefined ? selectedNode.diamondTextScale : 0.72) * 100)}" class="text-input" title="Diamond text-area percentage" style="font-size: 10px; font-family: var(--font-mono); width: 52px; height: 24px; padding: 2px 4px;">
+          </div>
         </div>
         
         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
@@ -3369,6 +3848,13 @@ function renderSidebarSelection() {
   const fontSelect = styleWrapper.querySelector("#node-font-family-select");
   const textSizeSlider = styleWrapper.querySelector("#node-text-size-slider");
   const textSizeVal = styleWrapper.querySelector("#node-text-size-val");
+  const textPaddingXSlider = styleWrapper.querySelector("#node-text-padding-x");
+  const textPaddingXVal = styleWrapper.querySelector("#node-text-padding-x-val");
+  const textPaddingYSlider = styleWrapper.querySelector("#node-text-padding-y");
+  const textPaddingYVal = styleWrapper.querySelector("#node-text-padding-y-val");
+  const diamondTextAreaRow = styleWrapper.querySelector("#node-diamond-text-area-row");
+  const diamondTextAreaSlider = styleWrapper.querySelector("#node-diamond-text-area");
+  const diamondTextAreaVal = styleWrapper.querySelector("#node-diamond-text-area-val");
   const boldBtn = styleWrapper.querySelector("#node-btn-bold");
   const italicBtn = styleWrapper.querySelector("#node-btn-italic");
   const underlineBtn = styleWrapper.querySelector("#node-btn-underline");
@@ -3402,8 +3888,13 @@ function renderSidebarSelection() {
       radiusContainer.style.display = (shape === "rect" || !shape) ? "flex" : "none";
     }
   };
+
+  const updateDiamondTextVisibility = shape => {
+    if (diamondTextAreaRow) diamondTextAreaRow.style.display = shape === "diamond" ? "flex" : "none";
+  };
   
   updateRadiusVisibility(selectedNode.shape);
+  updateDiamondTextVisibility(selectedNode.shape);
   boldBtn.classList.toggle("active", selectedNode.fontWeight === "bold");
   italicBtn.classList.toggle("active", selectedNode.fontStyle === "italic");
   underlineBtn.classList.toggle("active", selectedNode.textDecoration === "underline");
@@ -3411,6 +3902,7 @@ function renderSidebarSelection() {
   shapeSelect.addEventListener("change", (e) => {
     const val = e.target.value;
     updateRadiusVisibility(val);
+    updateDiamondTextVisibility(val);
     selectedNode.shape = val;
     renderSVG();
     saveData();
@@ -3431,6 +3923,32 @@ function renderSidebarSelection() {
     saveData();
   });
 
+  const wireNumericRange = (slider, numberInput, min, max, applyValue) => {
+    const apply = (rawValue, syncNumber = true) => {
+      const parsed = parseFloat(rawValue);
+      if (!Number.isFinite(parsed)) return;
+      const value = Math.max(min, Math.min(max, parsed));
+      slider.value = value;
+      if (syncNumber) numberInput.value = value;
+      applyValue(value);
+      renderSVG();
+      saveData();
+    };
+    slider.addEventListener("input", e => apply(e.target.value));
+    numberInput.addEventListener("input", e => apply(e.target.value, false));
+    numberInput.addEventListener("blur", e => apply(Number.isFinite(parseFloat(e.target.value)) ? e.target.value : slider.value, true));
+  };
+
+  wireNumericRange(textPaddingXSlider, textPaddingXVal, 0, 40, value => {
+    selectedNode.textPaddingX = value;
+  });
+  wireNumericRange(textPaddingYSlider, textPaddingYVal, 0, 40, value => {
+    selectedNode.textPaddingY = value;
+  });
+  wireNumericRange(diamondTextAreaSlider, diamondTextAreaVal, 50, 95, value => {
+    selectedNode.diamondTextScale = value / 100;
+  });
+
   registerUndoTrigger(fillPicker, "mousedown");
   registerUndoTrigger(fillHex, "focus");
   registerUndoTrigger(strokePicker, "mousedown");
@@ -3439,6 +3957,12 @@ function renderSidebarSelection() {
   registerUndoTrigger(textHex, "focus");
   registerUndoTrigger(radiusSlider, "mousedown");
   registerUndoTrigger(textSizeSlider, "mousedown");
+  registerUndoTrigger(textPaddingXSlider, "mousedown");
+  registerUndoTrigger(textPaddingYSlider, "mousedown");
+  registerUndoTrigger(diamondTextAreaSlider, "mousedown");
+  registerUndoTrigger(textPaddingXVal, "focus");
+  registerUndoTrigger(textPaddingYVal, "focus");
+  registerUndoTrigger(diamondTextAreaVal, "focus");
   registerUndoTrigger(shapeSelect, "mousedown");
   registerUndoTrigger(resetStyleBtn, "click");
 
@@ -3517,6 +4041,30 @@ function renderSidebarSelection() {
 
   wireColorPickerPair(textPicker, textHex, (val) => {
     selectedNode.textColor = val;
+    renderSVG();
+    saveData();
+  });
+
+  const fontFamSelect = styleWrapper.querySelector("#node-font-family");
+  fontFamSelect.addEventListener("change", (e) => {
+    pushState();
+    selectedNode.fontFamily = e.target.value;
+    renderSVG();
+    saveData();
+  });
+
+  const fontSizeInput = styleWrapper.querySelector("#node-font-size");
+  fontSizeInput.addEventListener("change", (e) => {
+    pushState();
+    selectedNode.fontSize = parseInt(e.target.value) || 12;
+    renderSVG();
+    saveData();
+  });
+
+  const fontWeightSelect = styleWrapper.querySelector("#node-font-weight");
+  fontWeightSelect.addEventListener("change", (e) => {
+    pushState();
+    selectedNode.fontWeight = e.target.value;
     renderSVG();
     saveData();
   });
@@ -3646,6 +4194,9 @@ function renderSidebarSelection() {
     delete selectedNode.fontWeight;
     delete selectedNode.fontStyle;
     delete selectedNode.textDecoration;
+    delete selectedNode.textPaddingX;
+    delete selectedNode.textPaddingY;
+    delete selectedNode.diamondTextScale;
     delete selectedNode.fillType;
     delete selectedNode.fillColor2;
     delete selectedNode.gradientAngle;
@@ -4174,12 +4725,19 @@ function toggleConnection(sourceId, targetId) {
 function setTool(tool) {
   activeTool = tool;
   
-  // Update button selection
+  // Update button highlight
   toolSelectBtn.classList.toggle("active", tool === "select");
   toolConnectBtn.classList.toggle("active", tool === "connect");
-  
+  if (toolPanBtn) toolPanBtn.classList.toggle("active", tool === "pan");
+
   // Toggle cursor styling on canvas wrapper
   canvasContainer.classList.toggle("tool-connect", tool === "connect");
+  canvasContainer.classList.toggle("tool-pan", tool === "pan");
+
+  const viewport = document.querySelector(".canvas-viewport");
+  if (viewport) {
+    viewport.style.cursor = tool === "pan" ? "grab" : "";
+  }
   
   // Cancel connection source
   connectionSourceId = null;
@@ -4187,6 +4745,8 @@ function setTool(tool) {
   
   if (tool === "connect") {
     showToast("Connect Mode: Click source box, then click target box.");
+  } else if (tool === "pan") {
+    showToast("Pan Mode: Click and drag to pan. Press V to return to Select.");
   }
 }
 
@@ -4228,6 +4788,19 @@ function resetZoomAndPan() {
 }
 
 function setupEventListeners() {
+  nodesGroup.addEventListener("dblclick", (e) => {
+    const nodeGroup = e.target.closest(".node-group");
+    if (!nodeGroup || activeTool !== "select" || isSpacePressed) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (pendingNodeClickTimer) {
+      window.clearTimeout(pendingNodeClickTimer);
+      pendingNodeClickTimer = null;
+    }
+    const nodeId = nodeGroup.dataset.id;
+    window.setTimeout(() => startInlineEditing(nodeId), 0);
+  }, true);
+
   // Sidebar tab clicking
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -4262,6 +4835,7 @@ function setupEventListeners() {
 
   // Tool Switching click handlers
   toolSelectBtn.addEventListener("click", () => setTool("select"));
+  if (toolPanBtn) toolPanBtn.addEventListener("click", () => setTool("pan"));
   toolConnectBtn.addEventListener("click", () => setTool("connect"));
 
   // Chart Title Input
@@ -4366,13 +4940,21 @@ function setupEventListeners() {
           selectedNodeIds.clear();
           const targetCol = state.columns[state.columns.length - 1]; // Paste into last column for simplicity, or we can just append to the first column
           
+          const reservedClones = [];
           clipboardNodes.forEach(clipNode => {
             const newNode = JSON.parse(JSON.stringify(clipNode));
             newNode.id = "B_" + Math.random().toString(36).substr(2, 5).toUpperCase();
-            newNode.x = (newNode.x || 0) + 20;
-            newNode.y = (newNode.y || 0) + 20;
+            const clonePos = getNonOverlappingClonePosition(clipNode, clipNode.id, reservedClones);
+            newNode.x = clonePos.x;
+            newNode.y = clonePos.y;
             newNode.targets = []; // Do not copy connections by default
             targetCol.nodes.push(newNode);
+            reservedClones.push({
+              x: clonePos.x,
+              y: clonePos.y,
+              width: newNode.width || NODE_WIDTH,
+              height: newNode.height || NODE_HEIGHT
+            });
             selectedNodeIds.add(newNode.id);
           });
           selectNode(null); // Multi-select
@@ -4387,14 +4969,22 @@ function setupEventListeners() {
           e.preventDefault();
           pushState();
           const newIds = [];
+          const reservedClones = [];
           selectedNodeIds.forEach(id => {
             const n = findNodeById(id);
             if (n && !n.locked) {
               const newNode = JSON.parse(JSON.stringify(n));
               newNode.id = "B_" + Math.random().toString(36).substr(2, 5).toUpperCase();
-              newNode.x = (newNode.x || 0) + 20;
-              newNode.y = (newNode.y || 0) + 20;
+              const clonePos = getNonOverlappingClonePosition(n, id, reservedClones);
+              newNode.x = clonePos.x;
+              newNode.y = clonePos.y;
               newNode.targets = [];
+              reservedClones.push({
+                x: clonePos.x,
+                y: clonePos.y,
+                width: newNode.width || NODE_WIDTH,
+                height: newNode.height || NODE_HEIGHT
+              });
               
               // Find which column to put it in
               state.columns.forEach(col => {
@@ -4556,6 +5146,8 @@ function setupEventListeners() {
 
     if (key === "v") {
       setTool("select");
+    } else if (key === "h") {
+      setTool("pan");
     } else if (key === "c") {
       setTool("connect");
     } else if (e.key === "Delete" || e.key === "Backspace") {
@@ -5026,18 +5618,26 @@ function setupEventListeners() {
   const viewport = document.querySelector(".canvas-viewport");
   
   viewport.addEventListener("mousedown", (e) => {
-    // Blur active elements (inputs, select, buttons) to restore focus to body,
-    // enabling canvas keyboard shortcuts and spacebar panning immediately.
-    if (document.activeElement && 
-        document.activeElement !== document.body && 
-        typeof document.activeElement.blur === "function") {
-      // Don't blur if clicking inside the sidebar panel or inspectors
-      if (!e.target.closest(".sidebar") && !e.target.closest(".inspector-panel") && !e.target.closest(".left-toolbar")) {
+    // Always blur focused inputs when clicking the canvas area
+    if (document.activeElement && document.activeElement !== document.body) {
+      const tag = document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
         document.activeElement.blur();
       }
     }
 
-    if (isSpacePressed) {
+    // Middle mouse button (button === 1) always pans, regardless of any key state
+    if (e.button === 1) {
+      isPanning = true;
+      viewport.style.cursor = "grabbing";
+      startX = e.clientX - panX;
+      startY = e.clientY - panY;
+      e.preventDefault();
+      return;
+    }
+
+    // Space + left button panning, OR Pan Tool active
+    if (e.button === 0 && (isSpacePressed || activeTool === "pan")) {
       isPanning = true;
       viewport.style.cursor = "grabbing";
       startX = e.clientX - panX;
@@ -5242,22 +5842,30 @@ function setupEventListeners() {
       let newX = resizeStartBounds.x;
       let newY = resizeStartBounds.y;
 
+      const isCenterScale = e.altKey;
+
       if (resizeDirection.includes('e')) {
-        newW = Math.max(20, resizeStartBounds.w + dx);
-        newX = resizeStartBounds.x + (newW - resizeStartBounds.w) / 2;
+        newW = Math.max(20, resizeStartBounds.w + (isCenterScale ? dx * 2 : dx));
+        newX = resizeStartBounds.x + (isCenterScale ? 0 : (newW - resizeStartBounds.w) / 2);
       }
       if (resizeDirection.includes('w')) {
-        newW = Math.max(20, resizeStartBounds.w - dx);
-        newX = resizeStartBounds.x - (newW - resizeStartBounds.w) / 2;
+        newW = Math.max(20, resizeStartBounds.w - (isCenterScale ? dx * 2 : dx));
+        newX = resizeStartBounds.x - (isCenterScale ? 0 : (newW - resizeStartBounds.w) / 2);
       }
       if (resizeDirection.includes('s')) {
-        newH = Math.max(20, resizeStartBounds.h + dy);
-        newY = resizeStartBounds.y + (newH - resizeStartBounds.h) / 2;
+        newH = Math.max(20, resizeStartBounds.h + (isCenterScale ? dy * 2 : dy));
+        newY = resizeStartBounds.y + (isCenterScale ? 0 : (newH - resizeStartBounds.h) / 2);
       }
       if (resizeDirection.includes('n')) {
-        newH = Math.max(20, resizeStartBounds.h - dy);
-        newY = resizeStartBounds.y - (newH - resizeStartBounds.h) / 2;
+        newH = Math.max(20, resizeStartBounds.h - (isCenterScale ? dy * 2 : dy));
+        newY = resizeStartBounds.y - (isCenterScale ? 0 : (newH - resizeStartBounds.h) / 2);
       }
+
+      // Round everything to 1 decimal place to prevent excessive precision
+      newW = Math.round(newW * 10) / 10;
+      newH = Math.round(newH * 10) / 10;
+      newX = Math.round(newX * 10) / 10;
+      newY = Math.round(newY * 10) / 10;
 
       node.width = newW;
       node.height = newH;
@@ -5399,7 +6007,7 @@ function setupEventListeners() {
   window.addEventListener("mouseup", (e) => {
     if (isPanning) {
       isPanning = false;
-      viewport.style.cursor = isSpacePressed ? "grab" : "";
+      viewport.style.cursor = (activeTool === "pan" || isSpacePressed) ? "grab" : "";
     } else if (isResizingNode) {
       isResizingNode = false;
       resizeNodeId = null;
@@ -5644,6 +6252,14 @@ function loadSavedData() {
     if (data && data.columns && Array.isArray(data.columns)) {
       state = data;
       if (!state.animatedFlow) state.animatedFlow = "off";
+      // Earlier builds defaulted every connector to a straight diagonal. Upgrade
+      // only those implicit defaults; explicitly styled individual connectors
+      // remain untouched and can still be straight or curved.
+      if (!state.routingVersion || state.routingVersion < 2) {
+        state.lineShape = "orthogonal";
+        state.routingVersion = 2;
+        saveData();
+      }
       
       // Update stroke selector button highlight
       if (state.strokeWidth) {
@@ -5773,8 +6389,70 @@ function loadSavedData() {
 
 // 12. Portable SVG Exporters
 
-function generatePortableSVGString() {
+let lastExportDimensions = { width: BASE_WIDTH, height: BASE_HEIGHT };
+
+function getExportBounds() {
+  const selectors = [
+    ".node-rect",
+    ".node-text",
+    ".connector-line",
+    ".connector-label-group",
+    ".chart-title-text",
+    ".column-header-text"
+  ];
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  svgEl.querySelectorAll(selectors.join(",")).forEach(element => {
+    if (element.closest("defs")) return;
+    if (element.tagName.toLowerCase() === "text" && !(element.textContent || "").trim()) return;
+    try {
+      const box = element.getBBox();
+      if (!Number.isFinite(box.x) || !Number.isFinite(box.y)) return;
+      minX = Math.min(minX, box.x);
+      minY = Math.min(minY, box.y);
+      maxX = Math.max(maxX, box.x + box.width);
+      maxY = Math.max(maxY, box.y + box.height);
+    } catch (error) {
+      // Ignore non-rendered SVG elements; visible content still determines bounds.
+    }
+  });
+
+  if (!Number.isFinite(minX)) {
+    return { x: 0, y: 0, width: currentCanvasWidth, height: currentCanvasHeight };
+  }
+  const padding = 36;
+  return {
+    x: Math.floor(minX - padding),
+    y: Math.floor(minY - padding),
+    width: Math.max(1, Math.ceil(maxX - minX + padding * 2)),
+    height: Math.max(1, Math.ceil(maxY - minY + padding * 2))
+  };
+}
+
+function generatePortableSVGString(options = {}) {
+  const includeRemoteFont = options.includeRemoteFont !== false;
   const clone = svgEl.cloneNode(true);
+  const exportBounds = getExportBounds();
+  lastExportDimensions = { width: exportBounds.width, height: exportBounds.height };
+  clone.setAttribute("viewBox", `${exportBounds.x} ${exportBounds.y} ${exportBounds.width} ${exportBounds.height}`);
+  clone.setAttribute("width", exportBounds.width);
+  clone.setAttribute("height", exportBounds.height);
+  clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  const clonedGrid = clone.querySelector("#svg-grid-background-rect");
+  if (clonedGrid) {
+    clonedGrid.setAttribute("x", exportBounds.x);
+    clonedGrid.setAttribute("y", exportBounds.y);
+    clonedGrid.setAttribute("width", exportBounds.width);
+    clonedGrid.setAttribute("height", exportBounds.height);
+  }
+
+  clone.querySelectorAll(".resize-handle, .node-lock-indicator, .connection-anchor-handle, .connector-line-interactive-overlay, .connector-flow-animation").forEach(el => el.remove());
+  clone.querySelectorAll(".selected, .hovered, .search-match, .temp-focus-highlight").forEach(el => {
+    el.classList.remove("selected", "hovered", "search-match", "temp-focus-highlight");
+  });
   const theme = document.documentElement.getAttribute("data-theme") || "light";
   
   const nodeBg = theme === "dark" ? "#121212" : "#ffffff";
@@ -5791,7 +6469,7 @@ function generatePortableSVGString() {
   const savedFontSource = safeStorage.getItem("flowchart_font_source") || "google";
 
   // Embed the Google Font stylesheet URL directly into defs if active
-  if (savedFontName && savedFontSource === "google") {
+  if (includeRemoteFont && savedFontName && savedFontSource === "google") {
     const formattedName = savedFontName.trim().replace(/\s+/g, '+');
     const defs = clone.querySelector("defs") || clone.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "defs"));
     const style = document.createElementNS("http://www.w3.org/2000/svg", "style");
@@ -5810,7 +6488,7 @@ function generatePortableSVGString() {
 
     const rect = g.querySelector(".node-rect");
     if (rect) {
-      const fill = (node && node.fill) ? node.fill : nodeBg;
+      const fill = node && node.fillType && node.fillType !== "solid" ? `url(#grad-${nodeId})` : ((node && node.fill) ? node.fill : nodeBg);
       const stroke = (node && node.stroke) ? node.stroke : nodeBorder;
       rect.setAttribute("fill", fill);
       rect.setAttribute("stroke", stroke);
@@ -5920,8 +6598,10 @@ function generatePortableSVGString() {
   if (state.exportTransparent !== true) {
     const canvasBgColor = theme === "dark" ? "#0a0a0a" : "#fafafa";
     const bgRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    bgRect.setAttribute("width", "100%");
-    bgRect.setAttribute("height", "100%");
+    bgRect.setAttribute("x", exportBounds.x);
+    bgRect.setAttribute("y", exportBounds.y);
+    bgRect.setAttribute("width", exportBounds.width);
+    bgRect.setAttribute("height", exportBounds.height);
     bgRect.setAttribute("fill", canvasBgColor);
     
     // Insert background before other layers
@@ -5953,15 +6633,17 @@ function downloadSVG() {
 }
 
 function downloadPNG() {
-  const svgString = generatePortableSVGString();
+  // Remote @font-face imports can taint the rasterization canvas in some
+  // browsers. PNG uses the same portable font stack without a network import.
+  const svgString = generatePortableSVGString({ includeRemoteFont: false });
   const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   
   const img = new Image();
   img.onload = () => {
     const canvas = document.createElement("canvas");
-    canvas.width = currentCanvasWidth * 2;
-    canvas.height = currentCanvasHeight * 2;
+    canvas.width = lastExportDimensions.width * 2;
+    canvas.height = lastExportDimensions.height * 2;
     
     const ctx = canvas.getContext("2d");
     ctx.scale(2, 2);
@@ -6041,6 +6723,8 @@ function startInlineEditing(nodeId) {
     if (found) node = found;
   });
   if (!node) return;
+  const originalLabel = node.label || "";
+  const originalTextRuns = node.textRuns ? JSON.parse(JSON.stringify(node.textRuns)) : null;
   
   const viewport = document.querySelector(".canvas-viewport");
   const rectEl = document.querySelector(`#node-${nodeId} .node-rect`);
@@ -6053,60 +6737,85 @@ function startInlineEditing(nodeId) {
   const width = rectBCR.width;
   const height = rectBCR.height;
   
-  const input = document.createElement("input");
-  input.type = "text";
+  const input = document.createElement("textarea");
   input.className = "inline-node-editor";
   input.id = "active-inline-editor";
-  input.value = node.label;
+  input.value = node.label || "";
   input.dataset.nodeId = nodeId;
   
   input.style.left = `${left}px`;
   input.style.top = `${top}px`;
   input.style.width = `${width}px`;
   input.style.height = `${height}px`;
+  input.style.resize = "none";
+  input.style.overflow = "hidden";
+  input.style.textAlign = node.textAlign || "center";
   
   const docStyle = getComputedStyle(document.documentElement);
-  input.style.fontFamily = docStyle.getPropertyValue("--font-sans");
-  
+  input.style.fontFamily = node.fontFamily || docStyle.getPropertyValue("--font-sans");
+  input.style.fontSize = `${(node.fontSize || 12) * zoom}px`;
+  input.style.fontWeight = node.fontWeight || "500";
+  input.style.color = node.textColor || "var(--text-primary)";
+  input.style.background = "transparent";
+  input.style.border = "1px dashed var(--accent-color)";
+  input.style.outline = "none";
+  input.style.lineHeight = "1.25";
+  input.style.padding = `${Math.max(1, (node.textPaddingY !== undefined ? node.textPaddingY : 8) * zoom)}px ${Math.max(2, (node.textPaddingX !== undefined ? node.textPaddingX : 10) * zoom)}px`;
+
+  const nodeGroup = document.getElementById(`node-${nodeId}`);
+  if (nodeGroup) nodeGroup.classList.add("inline-editing");
   viewport.appendChild(input);
   input.focus();
-  input.select();
+  input.setSelectionRange(input.value.length, input.value.length);
   
   input.addEventListener("blur", () => {
     commitInlineEdit();
   });
   
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitInlineEdit();
-    } else if (e.key === "Escape") {
-      input.value = node.label; // revert
+    if (e.key === "Escape") {
+      node.label = originalLabel;
+      node.textRuns = originalTextRuns;
+      input.value = originalLabel;
       commitInlineEdit();
     }
   });
 
   input.addEventListener("input", (e) => {
+    const oldLabel = node.label || "";
+    reconcileTextRuns(node, oldLabel, e.target.value);
+    node.label = e.target.value;
     const svgText = document.querySelector(`#node-${nodeId} .node-text`);
     if (svgText) {
-      wrapSVGText(svgText, e.target.value, NODE_WIDTH - 20, node.fontSize || 12);
+      const shapeType = node.shape || "rect";
+      const textPaddingX = node.textPaddingX !== undefined ? node.textPaddingX : 10;
+      const textPaddingY = node.textPaddingY !== undefined ? node.textPaddingY : 8;
+      const diamondTextScale = node.diamondTextScale !== undefined ? node.diamondTextScale : 0.72;
+      const effectiveW = shapeType === "diamond" ? (node.width || NODE_WIDTH) * diamondTextScale : (node.width || NODE_WIDTH);
+      const effectiveH = shapeType === "diamond" ? (node.height || NODE_HEIGHT) * diamondTextScale : (node.height || NODE_HEIGHT);
+      const maxTextWidth = Math.max((node.fontSize || 12) * 0.6, effectiveW - textPaddingX * 2);
+      wrapSVGText(svgText, e.target.value, maxTextWidth, node.fontSize || 12, effectiveW, effectiveH, node.textAlign || "center", node.verticalAlign || "middle", node.textRuns, textPaddingX, textPaddingY);
     }
   });
 }
 
 function commitInlineEdit() {
   const input = document.getElementById("active-inline-editor");
-  if (!input) return;
+  if (!input || input.dataset.committing === "true") return;
+  input.dataset.committing = "true";
   
   const nodeId = input.dataset.nodeId;
   const newVal = input.value.trim();
   
   state.columns.forEach(col => {
     const node = col.nodes.find(n => n.id === nodeId);
-    if (node) node.label = newVal;
+    if (node) {
+      if (node.label !== newVal) reconcileTextRuns(node, node.label || "", newVal);
+      node.label = newVal;
+    }
   });
   
-  input.remove();
+  if (input.isConnected) input.remove();
   renderAll();
   saveData();
 }
@@ -6178,6 +6887,8 @@ function renderConnectorSelectionPanel() {
   const strokeW = isObj ? (targetObj.strokeWidth || state.strokeWidth) : state.strokeWidth;
   const lineStyle = isObj ? (targetObj.strokeStyle || "solid") : "solid";
   const lineOffset = isObj ? (targetObj.lineOffset || 0) : 0;
+  const sourcePosition = isObj && targetObj.sourcePosition !== undefined ? targetObj.sourcePosition : 0.5;
+  const targetPosition = isObj && targetObj.targetPosition !== undefined ? targetObj.targetPosition : 0.5;
   const label = isObj ? (targetObj.label || "") : "";
   const theme = document.documentElement.getAttribute("data-theme") || "light";
   const labelColor = isObj && targetObj.labelColor ? targetObj.labelColor : (theme === 'dark' ? '#a3a3a3' : '#737373');
@@ -6214,9 +6925,14 @@ function renderConnectorSelectionPanel() {
         <div style="display: flex; flex-direction: column; gap: 2px;">
           <span style="font-size: 8px; text-transform: uppercase; color: var(--text-secondary); font-family: var(--font-mono);">Label Font</span>
           <select id="conn-label-font" style="padding: 2px 4px; font-size: 10px; background: var(--bg-color); color: var(--text-primary); border: 1px solid var(--panel-border); outline: none; border-radius: 2px;">
+            <option value="var(--font-sans)" ${labelFontFamily === "var(--font-sans)" ? "selected" : ""}>Default (Inter)</option>
             <option value="var(--font-mono)" ${labelFontFamily === "var(--font-mono)" ? "selected" : ""}>Monospace</option>
-            <option value="var(--font-sans)" ${labelFontFamily === "var(--font-sans)" ? "selected" : ""}>Sans-Serif</option>
             <option value="var(--font-serif)" ${labelFontFamily === "var(--font-serif)" ? "selected" : ""}>Serif</option>
+            <option value="Arial" ${labelFontFamily === "Arial" ? "selected" : ""}>Arial</option>
+            <option value="'Courier New', Courier, monospace" ${labelFontFamily === "'Courier New', Courier, monospace" ? "selected" : ""}>Courier New</option>
+            <option value="'Times New Roman', Times, serif" ${labelFontFamily === "'Times New Roman', Times, serif" ? "selected" : ""}>Times New Roman</option>
+            <option value="'Comic Sans MS', cursive" ${labelFontFamily === "'Comic Sans MS', cursive" ? "selected" : ""}>Comic Sans MS</option>
+            <option value="Impact, charcoal, sans-serif" ${labelFontFamily === "Impact, charcoal, sans-serif" ? "selected" : ""}>Impact</option>
           </select>
         </div>
         <div style="display: flex; flex-direction: column; gap: 2px;">
@@ -6255,6 +6971,35 @@ function renderConnectorSelectionPanel() {
           </select>
         </div>
       </div>
+
+      <div class="connection-position-controls">
+        <div class="connection-position-control">
+          <div class="connection-position-header">
+            <span>Start edge position</span>
+            <output id="conn-source-position-val">${Math.round(sourcePosition * 1000) / 10}%</output>
+          </div>
+          <div class="connection-position-row">
+            <input type="range" id="conn-source-position" min="0" max="100" step="0.1" value="${Math.round(sourcePosition * 1000) / 10}" class="connection-position-slider">
+            <input type="number" id="conn-source-position-input" min="0" max="100" step="0.1" value="${Math.round(sourcePosition * 1000) / 10}" class="text-input connection-position-number" aria-label="Start edge position percentage">
+            <span class="connection-position-unit">%</span>
+          </div>
+        </div>
+        <div class="connection-position-control">
+          <div class="connection-position-header">
+            <span>End edge position</span>
+            <output id="conn-target-position-val">${Math.round(targetPosition * 1000) / 10}%</output>
+          </div>
+          <div class="connection-position-row">
+            <input type="range" id="conn-target-position" min="0" max="100" step="0.1" value="${Math.round(targetPosition * 1000) / 10}" class="connection-position-slider">
+            <input type="number" id="conn-target-position-input" min="0" max="100" step="0.1" value="${Math.round(targetPosition * 1000) / 10}" class="text-input connection-position-number" aria-label="End edge position percentage">
+            <span class="connection-position-unit">%</span>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 9px; line-height: 1.35; color: var(--text-secondary);">Tip: drag either blue endpoint directly around its box for visual placement.</div>
+      <button class="btn" id="conn-align-endpoints-btn" style="padding: 6px; font-size: 10px; margin: 0;" title="Make compatible top/bottom endpoints share the exact X coordinate, or left/right endpoints share the exact Y coordinate.">
+        Align perfectly vertical / horizontal
+      </button>
 
       <!-- Line Shape & End Cap -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 2px;">
@@ -6336,6 +7081,13 @@ function renderConnectorSelectionPanel() {
   const labelInput = propsEl.querySelector("#conn-label-input");
   const sourceAnchorSelect = propsEl.querySelector("#conn-source-anchor");
   const targetAnchorSelect = propsEl.querySelector("#conn-target-anchor");
+  const sourcePositionSlider = propsEl.querySelector("#conn-source-position");
+  const targetPositionSlider = propsEl.querySelector("#conn-target-position");
+  const sourcePositionInput = propsEl.querySelector("#conn-source-position-input");
+  const targetPositionInput = propsEl.querySelector("#conn-target-position-input");
+  const sourcePositionVal = propsEl.querySelector("#conn-source-position-val");
+  const targetPositionVal = propsEl.querySelector("#conn-target-position-val");
+  const alignEndpointsBtn = propsEl.querySelector("#conn-align-endpoints-btn");
   const shapeSelect = propsEl.querySelector("#conn-shape-select");
   const markerSelect = propsEl.querySelector("#conn-marker-select");
   const cPicker = propsEl.querySelector("#conn-color-picker");
@@ -6398,6 +7150,47 @@ function renderConnectorSelectionPanel() {
   anchorChange(targetAnchorSelect, "targetAnchor");
   anchorChange(markerSelect, "markerType");
   anchorChange(styleSelect, "strokeStyle");
+
+  const positionChange = (slider, numberInput, display, prop) => {
+    const applyPosition = (rawValue, syncNumber = true) => {
+      const percentage = Math.max(0, Math.min(100, parseFloat(rawValue)));
+      if (!Number.isFinite(percentage)) return;
+      const value = percentage / 100;
+      const shown = Math.round(percentage * 10) / 10;
+      slider.value = shown;
+      if (syncNumber) numberInput.value = shown;
+      display.textContent = `${shown}%`;
+      const obj = getTObj();
+      if (obj) obj[prop] = value;
+      renderSVG();
+      saveData();
+    };
+    slider.addEventListener("input", e => applyPosition(e.target.value));
+    numberInput.addEventListener("input", e => {
+      const parsed = parseFloat(e.target.value);
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 100) {
+        applyPosition(parsed, false);
+      }
+    });
+    numberInput.addEventListener("blur", e => {
+      applyPosition(Number.isFinite(parseFloat(e.target.value)) ? e.target.value : slider.value, true);
+    });
+  };
+  positionChange(sourcePositionSlider, sourcePositionInput, sourcePositionVal, "sourcePosition");
+  positionChange(targetPositionSlider, targetPositionInput, targetPositionVal, "targetPosition");
+
+  alignEndpointsBtn.addEventListener("click", () => {
+    pushState();
+    const orientation = alignConnectionEndpoints(sourceId, targetId);
+    if (!orientation) {
+      showToast("These two selected edges cannot share one straight axis");
+      return;
+    }
+    renderSVG();
+    saveData();
+    renderSidebarSelection();
+    showToast(`Connection aligned perfectly ${orientation}`);
+  });
 
   animationSelect.addEventListener("change", (e) => {
     const obj = getTObj();
@@ -6467,6 +7260,10 @@ function renderConnectorSelectionPanel() {
   registerUndoTrigger(targetAnchorSelect, "change");
   registerUndoTrigger(shapeSelect, "change");
   registerUndoTrigger(markerSelect, "change");
+  registerUndoTrigger(sourcePositionSlider, "mousedown");
+  registerUndoTrigger(targetPositionSlider, "mousedown");
+  registerUndoTrigger(sourcePositionInput, "focus");
+  registerUndoTrigger(targetPositionInput, "focus");
   registerUndoTrigger(cPicker, "mousedown");
   registerUndoTrigger(cHex, "focus");
   registerUndoTrigger(styleSelect, "change");
