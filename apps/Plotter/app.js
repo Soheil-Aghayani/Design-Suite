@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const vectorListEl = document.getElementById('vector-list');
   const activeVectorNameEl = document.getElementById('active-vector-name');
   const btnAddVector = document.getElementById('btn-add-vector');
+  const btnMatchVectorStyles = document.getElementById('btn-match-vector-styles');
   const btnDuplicateVector = document.getElementById('btn-duplicate-vector');
   const btnDeleteVector = document.getElementById('btn-delete-vector');
 
@@ -621,9 +622,9 @@ document.addEventListener('DOMContentLoaded', () => {
       customB: 1,
       label: `Vector ${index + 1}`,
       style: 'arc',
-      height: 30 + index * 10,
+      height: 30,
       thickness: 2.5,
-      color: vectorPalette[index % vectorPalette.length],
+      color: vectorPalette[0],
       ...overrides
     };
   }
@@ -765,7 +766,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function addVector(overrides = {}) {
     syncActiveVectorFromControls();
-    const vector = createVector(overrides);
+    const source = getActiveVector();
+    const inheritedStyle = source ? {
+      style: source.style,
+      height: source.height,
+      thickness: source.thickness,
+      color: source.color
+    } : {};
+    const vector = createVector({ ...inheritedStyle, ...overrides });
     vectors.push(vector);
     activeVectorId = vector.id;
     showVectorEl.checked = true;
@@ -789,11 +797,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const { id: _sourceId, ...sourceWithoutId } = source;
     addVector({
       ...sourceWithoutId,
-      label: copyLabel,
-      height: Math.min(100, parseFloatDefault(source.height, 30) + 12),
-      color: vectorPalette[vectors.length % vectorPalette.length]
+      label: copyLabel
     });
     showToast('Vector duplicated');
+  });
+
+  btnMatchVectorStyles.addEventListener('click', () => {
+    syncActiveVectorFromControls();
+    const source = getActiveVector();
+    if (!source) return;
+    vectors.forEach(vector => {
+      vector.style = source.style;
+      vector.height = source.height;
+      vector.thickness = source.thickness;
+      vector.color = source.color;
+    });
+    loadActiveVectorIntoControls();
+    renderVectorList();
+    updateRender();
+    pushHistoryState();
+    showToast('Applied style to all vectors');
   });
 
   btnDeleteVector.addEventListener('click', () => {
@@ -1153,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const vectorThickness = parseFloatDefault(vector.thickness, 2.5);
         const vectorColor = vector.color || '#3B82F6';
         const markerId = `arrowhead-${String(vector.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
-        const yVecBase = axisY - vecTickOffset - 10 - vectorIndex * 9;
+        const yVecBase = axisY - vecTickOffset - 10;
         let vecPctA = 0.5;
         let vecPctB = 0.5;
 
