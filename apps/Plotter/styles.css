@@ -482,6 +482,224 @@ input[type="range"]::-webkit-slider-thumb:hover {
   cursor: pointer;
 }
 
+/* Multiple vector manager */
+.vector-manager-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vector-manager-heading .input-section-title {
+  margin-bottom: 2px;
+}
+
+.vector-manager-subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.vector-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 1px solid var(--text-primary);
+  border-radius: 5px;
+  background: var(--text-primary);
+  color: var(--bg-color);
+  font: 600 10px var(--font-mono);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.vector-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.14);
+}
+
+.vector-add-btn span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.vector-layer-toggle {
+  padding: 9px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--panel-bg) 78%, var(--text-primary) 4%);
+}
+
+.vector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vector-list-empty {
+  padding: 12px;
+  border: 1px dashed var(--panel-border);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font: 10px/1.45 var(--font-mono);
+  text-align: center;
+}
+
+.vector-list-item {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+}
+
+.vector-list-item:hover {
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--text-primary) 35%, var(--panel-border));
+}
+
+.vector-list-item.active {
+  border-color: var(--text-primary);
+  background: color-mix(in srgb, var(--panel-bg) 86%, var(--text-primary) 7%);
+  box-shadow: inset 2px 0 0 var(--text-primary);
+}
+
+.vector-list-item.is-hidden {
+  opacity: 0.58;
+}
+
+.vector-swatch {
+  width: 9px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--vector-color, #3b82f6);
+}
+
+.vector-list-copy {
+  min-width: 0;
+}
+
+.vector-select-btn {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vector-list-name,
+.vector-list-meta {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vector-list-name {
+  font: 600 10px var(--font-mono);
+}
+
+.vector-list-meta {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font: 9px var(--font-mono);
+}
+
+.vector-visibility-btn {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.vector-visibility-btn:hover {
+  background: var(--accent-bg-subtle);
+  color: var(--text-primary);
+}
+
+.vector-visibility-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.vector-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 5px;
+  background: var(--bg-color);
+}
+
+.vector-editor-kicker,
+.vector-editor-heading strong {
+  display: block;
+  font-family: var(--font-mono);
+}
+
+.vector-editor-kicker {
+  margin-bottom: 2px;
+  color: var(--text-secondary);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vector-editor-heading strong {
+  font-size: 10px;
+}
+
+.vector-editor-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.vector-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--panel-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.vector-icon-btn:hover {
+  border-color: var(--text-primary);
+}
+
+.vector-icon-btn.danger:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.vector-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
 /* Saved Presets Memory slots */
 .saved-presets-container {
   margin-top: 14px;
