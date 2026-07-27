@@ -365,14 +365,44 @@
 
         <!-- Vector Arrow (Interval) -->
         <div class="input-group">
-          <div class="input-section-title">Vector Arrow (Interval)</div>
-          
-          <div class="settings-row">
-            <label for="show-vector">Show Vector (A to B)</label>
+          <div class="vector-manager-heading">
+            <div>
+              <div class="input-section-title">Vector Arrows</div>
+              <p class="vector-manager-subtitle">Layer multiple intervals on the same axis.</p>
+            </div>
+            <button type="button" id="btn-add-vector" class="vector-add-btn" aria-label="Add vector arrow">
+              <span aria-hidden="true">+</span> Add
+            </button>
+          </div>
+
+          <div class="settings-row vector-layer-toggle">
+            <label for="show-vector">Show Vector Layer</label>
             <input type="checkbox" id="show-vector" class="checkbox-input">
           </div>
+
+          <div id="vector-list" class="vector-list" aria-label="Vector arrows"></div>
           
           <div id="vector-controls-container" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="vector-editor-heading">
+              <div>
+                <span class="vector-editor-kicker">Editing</span>
+                <strong id="active-vector-name">Vector 1</strong>
+              </div>
+              <div class="vector-editor-actions">
+                <button type="button" id="btn-duplicate-vector" class="vector-icon-btn" title="Duplicate selected vector" aria-label="Duplicate selected vector">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                    <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+                  </svg>
+                </button>
+                <button type="button" id="btn-delete-vector" class="vector-icon-btn danger" title="Delete selected vector" aria-label="Delete selected vector">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                    <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
             <!-- Vector Start (A) -->
             <div class="input-field-wrapper">
               <label for="vector-val-a">Start Position (A)</label>

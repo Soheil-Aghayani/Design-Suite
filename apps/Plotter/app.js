@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const vectorThicknessEl = document.getElementById('vector-thickness');
   const colorVectorEl = document.getElementById('color-vector');
   const colorVectorTextEl = document.getElementById('color-vector-text');
+  const vectorListEl = document.getElementById('vector-list');
+  const activeVectorNameEl = document.getElementById('active-vector-name');
+  const btnAddVector = document.getElementById('btn-add-vector');
+  const btnDuplicateVector = document.getElementById('btn-duplicate-vector');
+  const btnDeleteVector = document.getElementById('btn-delete-vector');
 
   // Elements: Custom Labels & Rotation & HUD References
   const labelModeEl = document.getElementById('label-mode');
@@ -135,6 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let startY = 0;
   let isSpacePressed = false;
   let isFirstRender = true;
+  let vectors = [];
+  let activeVectorId = null;
   
   // --- Mobile Sidebar Toggles ---
   const btnToggleLeft = document.getElementById('btn-toggle-left');
@@ -484,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- VECTOR ARROW CONTROLS & VISIBILITY HELPERS ---
   function toggleVectorControlsVisibility() {
-    if (showVectorEl.checked) {
+    if (showVectorEl.checked && vectors.length > 0) {
       vectorControlsContainer.style.display = 'flex';
     } else {
       vectorControlsContainer.style.display = 'none';
@@ -589,6 +596,220 @@ document.addEventListener('DOMContentLoaded', () => {
     vectorValBEl.value = vectorValBSliderEl.value;
   });
 
+  const vectorPalette = ['#3B82F6', '#8B5CF6', '#EC4899', '#F97316', '#10B981', '#06B6D4', '#EAB308'];
+
+  function createVector(overrides = {}) {
+    const index = vectors.length;
+    const start = parseFloatDefault(startValEl.value, 0);
+    const end = parseFloatDefault(endValEl.value, 100);
+    const span = end - start || 100;
+    const startPct = Math.min(0.42, 0.16 + index * 0.07);
+    const endPct = Math.min(0.92, 0.60 + index * 0.07);
+    const subdivisions = Math.max(1, parseIntDefault(minorSubdivisionsEl.value, 1));
+    const interval = Math.abs(parseFloatDefault(stepValEl.value, 10) / subdivisions) || 1;
+    const snapToInterval = value => Math.round((value - start) / interval) * interval + start;
+    const uniquePart = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return {
+      id: `vector-${uniquePart}`,
+      enabled: true,
+      valA: Math.round(snapToInterval(start + span * startPct) * 1000) / 1000,
+      valB: Math.round(snapToInterval(start + span * endPct) * 1000) / 1000,
+      customA: 0,
+      customB: 1,
+      label: `Vector ${index + 1}`,
+      style: 'arc',
+      height: 30 + index * 10,
+      thickness: 2.5,
+      color: vectorPalette[index % vectorPalette.length],
+      ...overrides
+    };
+  }
+
+  function normalizeVector(vector, index = 0) {
+    const fallback = createVector({ label: `Vector ${index + 1}` });
+    return {
+      id: vector && vector.id ? String(vector.id) : fallback.id,
+      enabled: vector && vector.enabled !== undefined ? Boolean(vector.enabled) : true,
+      valA: vector && vector.valA !== undefined ? vector.valA : fallback.valA,
+      valB: vector && vector.valB !== undefined ? vector.valB : fallback.valB,
+      customA: vector && vector.customA !== undefined ? vector.customA : 0,
+      customB: vector && vector.customB !== undefined ? vector.customB : 1,
+      label: vector && vector.label !== undefined ? String(vector.label) : fallback.label,
+      style: vector && vector.style === 'straight' ? 'straight' : 'arc',
+      height: vector && vector.height !== undefined ? vector.height : fallback.height,
+      thickness: vector && vector.thickness !== undefined ? vector.thickness : 2.5,
+      color: vector && /^#[0-9a-f]{6}$/i.test(vector.color || '') ? vector.color : fallback.color
+    };
+  }
+
+  function getActiveVector() {
+    return vectors.find(vector => vector.id === activeVectorId) || null;
+  }
+
+  function getVectorDisplayName(vector, index) {
+    const label = String(vector.label || '').trim();
+    return label || `Vector ${index + 1}`;
+  }
+
+  function syncActiveVectorFromControls() {
+    const vector = getActiveVector();
+    if (!vector) return;
+    vector.valA = vectorValAEl.value;
+    vector.valB = vectorValBEl.value;
+    vector.customA = vectorValACustomEl.value;
+    vector.customB = vectorValBCustomEl.value;
+    vector.label = vectorLabelEl.value;
+    vector.style = vectorStyleEl.value;
+    vector.height = vectorHeightEl.value;
+    vector.thickness = vectorThicknessEl.value;
+    vector.color = colorVectorEl.value;
+  }
+
+  function loadActiveVectorIntoControls() {
+    const vector = getActiveVector();
+    if (!vector) return;
+    const index = vectors.findIndex(item => item.id === vector.id);
+    vectorValAEl.value = vector.valA;
+    vectorValASliderEl.value = vector.valA;
+    vectorValACustomEl.value = vector.customA;
+    vectorValBEl.value = vector.valB;
+    vectorValBSliderEl.value = vector.valB;
+    vectorValBCustomEl.value = vector.customB;
+    vectorLabelEl.value = vector.label;
+    vectorStyleEl.value = vector.style;
+    vectorHeightEl.value = vector.height;
+    vectorThicknessEl.value = vector.thickness;
+    colorVectorEl.value = vector.color;
+    colorVectorTextEl.value = vector.color.toUpperCase();
+    activeVectorNameEl.textContent = getVectorDisplayName(vector, index);
+    updateVectorSliderLimits();
+    updateRangeLabels();
+  }
+
+  function getVectorMeta(vector) {
+    if (labelModeEl.value === 'custom') {
+      const labels = customLabelsInputEl.value.split(',').map(item => item.trim()).filter(Boolean);
+      const startLabel = labels[parseIntDefault(vector.customA, 0)] || 'A';
+      const endLabel = labels[parseIntDefault(vector.customB, 1)] || 'B';
+      return `${startLabel} → ${endLabel}`;
+    }
+    return `${vector.valA} → ${vector.valB}`;
+  }
+
+  function renderVectorList() {
+    vectorListEl.innerHTML = '';
+    if (vectors.length === 0) {
+      vectorListEl.innerHTML = '<div class="vector-list-empty">No vector arrows yet. Choose “+ Add” to create one.</div>';
+      return;
+    }
+
+    if (!getActiveVector()) activeVectorId = vectors[0].id;
+
+    vectors.forEach((vector, index) => {
+      const item = document.createElement('div');
+      item.className = `vector-list-item${vector.id === activeVectorId ? ' active' : ''}${vector.enabled ? '' : ' is-hidden'}`;
+      item.dataset.vectorId = vector.id;
+
+      const swatch = document.createElement('span');
+      swatch.className = 'vector-swatch';
+      swatch.style.setProperty('--vector-color', vector.color);
+
+      const copy = document.createElement('span');
+      copy.className = 'vector-list-copy';
+      const name = document.createElement('span');
+      name.className = 'vector-list-name';
+      name.textContent = getVectorDisplayName(vector, index);
+      const meta = document.createElement('span');
+      meta.className = 'vector-list-meta';
+      meta.textContent = getVectorMeta(vector);
+      copy.append(name, meta);
+
+      const selectButton = document.createElement('button');
+      selectButton.type = 'button';
+      selectButton.className = 'vector-select-btn';
+      selectButton.setAttribute('aria-label', `Edit ${getVectorDisplayName(vector, index)}, ${getVectorMeta(vector)}`);
+      selectButton.appendChild(copy);
+
+      const visibility = document.createElement('button');
+      visibility.type = 'button';
+      visibility.className = 'vector-visibility-btn';
+      visibility.setAttribute('aria-label', `${vector.enabled ? 'Hide' : 'Show'} ${getVectorDisplayName(vector, index)}`);
+      visibility.title = vector.enabled ? 'Hide this vector' : 'Show this vector';
+      visibility.innerHTML = vector.enabled
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m3 3 18 18M10.6 6.2A9.6 9.6 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.1 2.8M6.1 6.1C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.6-.3 3.7-.7"></path></svg>';
+      visibility.addEventListener('click', event => {
+        event.stopPropagation();
+        vector.enabled = !vector.enabled;
+        renderVectorList();
+        updateRender();
+        pushHistoryState();
+      });
+
+      const selectVector = () => {
+        syncActiveVectorFromControls();
+        activeVectorId = vector.id;
+        loadActiveVectorIntoControls();
+        renderVectorList();
+        updateRender();
+      };
+      selectButton.addEventListener('click', selectVector);
+
+      item.append(swatch, selectButton, visibility);
+      vectorListEl.appendChild(item);
+    });
+  }
+
+  function addVector(overrides = {}) {
+    syncActiveVectorFromControls();
+    const vector = createVector(overrides);
+    vectors.push(vector);
+    activeVectorId = vector.id;
+    showVectorEl.checked = true;
+    loadActiveVectorIntoControls();
+    renderVectorList();
+    updateRender();
+    pushHistoryState();
+    return vector;
+  }
+
+  btnAddVector.addEventListener('click', () => {
+    addVector();
+    showToast(`Added ${getVectorDisplayName(getActiveVector(), vectors.length - 1)}`);
+  });
+
+  btnDuplicateVector.addEventListener('click', () => {
+    const source = getActiveVector();
+    if (!source) return;
+    const sourceIndex = vectors.findIndex(vector => vector.id === source.id);
+    const copyLabel = `${getVectorDisplayName(source, sourceIndex)} copy`;
+    const { id: _sourceId, ...sourceWithoutId } = source;
+    addVector({
+      ...sourceWithoutId,
+      label: copyLabel,
+      height: Math.min(100, parseFloatDefault(source.height, 30) + 12),
+      color: vectorPalette[vectors.length % vectorPalette.length]
+    });
+    showToast('Vector duplicated');
+  });
+
+  btnDeleteVector.addEventListener('click', () => {
+    const index = vectors.findIndex(vector => vector.id === activeVectorId);
+    if (index < 0) return;
+    vectors.splice(index, 1);
+    activeVectorId = vectors[Math.min(index, vectors.length - 1)]?.id || null;
+    if (vectors.length === 0) showVectorEl.checked = false;
+    if (activeVectorId) loadActiveVectorIntoControls();
+    renderVectorList();
+    toggleVectorControlsVisibility();
+    updateRender();
+    pushHistoryState();
+    showToast('Vector deleted');
+  });
+
   // --- GENERATE SVG STRING (TIGHT CROP MATH + ADVANCED FEATURES) ---
   function generateSVGString() {
     const labelMode = labelModeEl.value;
@@ -658,15 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Vector options
     const showVector = showVectorEl.checked;
-    const vectorValA = parseFloatDefault(vectorValAEl.value, 0);
-    const vectorValB = parseFloatDefault(vectorValBEl.value, 0);
-    const vectorValACustomIndex = parseIntDefault(vectorValACustomEl.value, 0);
-    const vectorValBCustomIndex = parseIntDefault(vectorValBCustomEl.value, 0);
-    const vectorLabelText = vectorLabelEl.value.trim();
-    const vectorStyle = vectorStyleEl.value;
-    const vectorHeight = parseFloatDefault(vectorHeightEl.value, 30);
-    const vectorThickness = parseFloatDefault(vectorThicknessEl.value, 2.5);
-    const vectorColor = colorVectorEl.value;
+    const vectorsToRender = showVector ? vectors.filter(vector => vector.enabled !== false) : [];
 
     const axisStart = 50;
     const axisEnd = 950;
@@ -922,53 +1135,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let vectorDefs = '';
     let vectorMarkup = '';
-    if (showVector) {
+    if (vectorsToRender.length > 0) {
       let vecTickOffset = 0;
       if (tickAlignment === 'centered') vecTickOffset = tickHeight / 2;
       else if (tickAlignment === 'above') vecTickOffset = tickHeight;
-      const yVecBase = axisY - vecTickOffset - 10;
-      let vecPctA = 0.5, vecPctB = 0.5;
-      if (labelMode === 'custom') {
-        const n = labels.length;
-        if (n > 1) {
-          vecPctA = Math.max(0, Math.min(n - 1, vectorValACustomIndex)) / (n - 1);
-          vecPctB = Math.max(0, Math.min(n - 1, vectorValBCustomIndex)) / (n - 1);
+
+      const markerMarkup = [];
+      const pathMarkup = [];
+
+      vectorsToRender.forEach((vector, vectorIndex) => {
+        const vectorValA = parseFloatDefault(vector.valA, startVal);
+        const vectorValB = parseFloatDefault(vector.valB, endVal);
+        const vectorValACustomIndex = parseIntDefault(vector.customA, 0);
+        const vectorValBCustomIndex = parseIntDefault(vector.customB, 1);
+        const vectorStyle = vector.style === 'straight' ? 'straight' : 'arc';
+        const vectorHeight = parseFloatDefault(vector.height, 30);
+        const vectorThickness = parseFloatDefault(vector.thickness, 2.5);
+        const vectorColor = vector.color || '#3B82F6';
+        const markerId = `arrowhead-${String(vector.id).replace(/[^a-zA-Z0-9_-]/g, '')}`;
+        const yVecBase = axisY - vecTickOffset - 10 - vectorIndex * 9;
+        let vecPctA = 0.5;
+        let vecPctB = 0.5;
+
+        if (labelMode === 'custom') {
+          const n = labels.length;
+          if (n > 1) {
+            vecPctA = Math.max(0, Math.min(n - 1, vectorValACustomIndex)) / (n - 1);
+            vecPctB = Math.max(0, Math.min(n - 1, vectorValBCustomIndex)) / (n - 1);
+          }
+        } else {
+          const rangeSpan = endVal - startVal;
+          if (rangeSpan !== 0) {
+            vecPctA = (vectorValA - startVal) / rangeSpan;
+            vecPctB = (vectorValB - startVal) / rangeSpan;
+          }
+          vecPctA = Math.max(0, Math.min(1, vecPctA));
+          vecPctB = Math.max(0, Math.min(1, vecPctB));
         }
-      } else {
-        const rangeSpan = endVal - startVal;
-        if (rangeSpan !== 0) {
-          vecPctA = (vectorValA - startVal) / rangeSpan;
-          vecPctB = (vectorValB - startVal) / rangeSpan;
-        }
-        vecPctA = Math.max(0, Math.min(1, vecPctA));
-        vecPctB = Math.max(0, Math.min(1, vecPctB));
-      }
-      const vecXA = tickStart + vecPctA * spacingSpan;
-      const vecXB = tickStart + vecPctB * spacingSpan;
-      xMin = Math.min(xMin, vecXA, vecXB);
-      xMax = Math.max(xMax, vecXA, vecXB);
-      const peakY = vectorStyle === 'arc' ? (yVecBase - vectorHeight) : yVecBase;
-      const labelY = peakY - 8;
-      yMin = Math.min(yMin, labelY - fontSize);
-      let rawVectorLabel = vectorLabelText;
-      if (isPersian) rawVectorLabel = toPersianDigits(rawVectorLabel);
-      vectorDefs = `  <defs>
-    <marker id="arrowhead-vec" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+
+        const vecXA = tickStart + vecPctA * spacingSpan;
+        const vecXB = tickStart + vecPctB * spacingSpan;
+        const peakY = vectorStyle === 'arc' ? yVecBase - vectorHeight : yVecBase;
+        const labelY = peakY - 8;
+        let rawVectorLabel = String(vector.label || '').trim();
+        if (isPersian) rawVectorLabel = toPersianDigits(rawVectorLabel);
+
+        xMin = Math.min(xMin, vecXA - 4, vecXB - 4);
+        xMax = Math.max(xMax, vecXA + 4, vecXB + 4);
+        yMin = Math.min(yMin, peakY - vectorThickness, rawVectorLabel ? labelY - fontSize : peakY);
+
+        markerMarkup.push(`    <marker id="${markerId}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 1 2.5 L 8 5 L 1 7.5 Z" fill="${vectorColor}" />
-    </marker>
+    </marker>`);
+
+        if (vectorStyle === 'arc') {
+          const xControl = (vecXA + vecXB) / 2;
+          const yControl = yVecBase - vectorHeight;
+          const pathD = `M ${vecXA.toFixed(1)} ${yVecBase.toFixed(1)} Q ${xControl.toFixed(1)} ${yControl.toFixed(1)} ${vecXB.toFixed(1)} ${yVecBase.toFixed(1)}`;
+          pathMarkup.push(`  <!-- Vector ${vectorIndex + 1}: Curved Arc -->
+  <path d="${pathD}" data-vector-id="${vector.id}" stroke="${vectorColor}" stroke-width="${vectorThickness.toFixed(1)}" fill="none" marker-end="url(#${markerId})" stroke-linecap="round" />
+  ${rawVectorLabel ? `  <text x="${xControl.toFixed(1)}" y="${(yControl - 6).toFixed(1)}" class="vector-label" fill="${vectorColor}">${rawVectorLabel}</text>` : ''}`);
+        } else {
+          pathMarkup.push(`  <!-- Vector ${vectorIndex + 1}: Straight Line -->
+  <line x1="${vecXA.toFixed(1)}" y1="${yVecBase.toFixed(1)}" x2="${vecXB.toFixed(1)}" y2="${yVecBase.toFixed(1)}" data-vector-id="${vector.id}" stroke="${vectorColor}" stroke-width="${vectorThickness.toFixed(1)}" marker-end="url(#${markerId})" stroke-linecap="round" />
+  ${rawVectorLabel ? `  <text x="${((vecXA + vecXB) / 2).toFixed(1)}" y="${(yVecBase - 8).toFixed(1)}" class="vector-label" fill="${vectorColor}">${rawVectorLabel}</text>` : ''}`);
+        }
+      });
+
+      vectorDefs = `  <defs>
+${markerMarkup.join('\n')}
   </defs>\n`;
-      if (vectorStyle === 'arc') {
-        const xControl = (vecXA + vecXB) / 2;
-        const yControl = yVecBase - vectorHeight;
-        const pathD = `M ${vecXA.toFixed(1)} ${yVecBase.toFixed(1)} Q ${xControl.toFixed(1)} ${yControl.toFixed(1)} ${vecXB.toFixed(1)} ${yVecBase.toFixed(1)}`;
-        vectorMarkup = `  <!-- Vector Curved Arc -->
-  <path d="${pathD}" stroke="${vectorColor}" stroke-width="${vectorThickness.toFixed(1)}" fill="none" marker-end="url(#arrowhead-vec)" stroke-linecap="round" />
-  ${rawVectorLabel ? `  <text x="${xControl.toFixed(1)}" y="${(yControl - 6).toFixed(1)}" class="vector-label">${rawVectorLabel}</text>` : ''}\n`;
-      } else {
-        vectorMarkup = `  <!-- Vector Straight Line -->
-  <line x1="${vecXA.toFixed(1)}" y1="${yVecBase.toFixed(1)}" x2="${vecXB.toFixed(1)}" y2="${yVecBase.toFixed(1)}" stroke="${vectorColor}" stroke-width="${vectorThickness.toFixed(1)}" marker-end="url(#arrowhead-vec)" stroke-linecap="round" />
-  ${rawVectorLabel ? `  <text x="${((vecXA + vecXB) / 2).toFixed(1)}" y="${(yVecBase - 8).toFixed(1)}" class="vector-label">${rawVectorLabel}</text>` : ''}\n`;
-      }
+      vectorMarkup = `${pathMarkup.join('\n')}\n`;
     }
 
     const cropMargin = 5;
@@ -1048,7 +1285,6 @@ ${vectorDefs}  <style>
       font-size: ${(fontSize * 0.95).toFixed(1)}px;
       font-weight: 600;
       font-style: ${fontStyle};
-      fill: ${vectorColor};
       text-anchor: middle;
       dominant-baseline: auto;
     }
@@ -1071,6 +1307,7 @@ ${vectorMarkup}</svg>`;
 
   // --- UPDATE RENDER VIEW & PERSIST IN STORAGE ---
   function updateRender() {
+    if (!isUpdatingFromPreset) syncActiveVectorFromControls();
     updateRangeLabels();
     if (labelModeEl.value === 'custom') {
       updateCustomArrowDropdown();
@@ -1081,6 +1318,7 @@ ${vectorMarkup}</svg>`;
     }
     toggleRulerControlsVisibility();
     toggleVectorControlsVisibility();
+    renderVectorList();
     const svgStr = generateSVGString();
     
     // Inject rendered SVG into DOM
@@ -1344,6 +1582,8 @@ ${vectorMarkup}</svg>`;
       rulerHeight: rulerHeightEl.value,
       rulerPlacement: rulerPlacementEl.value,
       showVector: showVectorEl.checked,
+      vectors: vectors.map(vector => ({ ...vector })),
+      activeVectorId,
       vectorValA: vectorValAEl.value,
       vectorValASlider: vectorValASliderEl.value,
       vectorValACustom: vectorValACustomEl.value,
@@ -1449,20 +1689,29 @@ ${vectorMarkup}</svg>`;
     rulerHeightEl.value = state.rulerHeight !== undefined ? state.rulerHeight : 60;
     rulerPlacementEl.value = state.rulerPlacement || 'center';
 
-    // Load Vector States
-    showVectorEl.checked = state.showVector || false;
-    vectorValAEl.value = state.vectorValA !== undefined ? state.vectorValA : 200;
-    vectorValASliderEl.value = state.vectorValASlider !== undefined ? state.vectorValASlider : 200;
-    vectorValACustomEl.value = state.vectorValACustom !== undefined ? state.vectorValACustom : 0;
-    vectorValBEl.value = state.vectorValB !== undefined ? state.vectorValB : 700;
-    vectorValBSliderEl.value = state.vectorValBSlider !== undefined ? state.vectorValBSlider : 700;
-    vectorValBCustomEl.value = state.vectorValBCustom !== undefined ? state.vectorValBCustom : 1;
-    vectorLabelEl.value = state.vectorLabel !== undefined ? state.vectorLabel : '+5';
-    vectorStyleEl.value = state.vectorStyle || 'arc';
-    vectorHeightEl.value = state.vectorHeight !== undefined ? state.vectorHeight : 30;
-    vectorThicknessEl.value = state.vectorThickness !== undefined ? state.vectorThickness : 2.5;
-    colorVectorEl.value = state.colorVector || '#3B82F6';
-    colorVectorTextEl.value = state.colorVectorText || '#3B82F6';
+    // Load vector collection. Older saves are migrated from their single vector.
+    if (Array.isArray(state.vectors)) {
+      vectors = state.vectors.map((vector, index) => normalizeVector(vector, index));
+    } else {
+      vectors = [createVector({
+        enabled: true,
+        valA: state.vectorValA !== undefined ? state.vectorValA : 200,
+        valB: state.vectorValB !== undefined ? state.vectorValB : 700,
+        customA: state.vectorValACustom !== undefined ? state.vectorValACustom : 0,
+        customB: state.vectorValBCustom !== undefined ? state.vectorValBCustom : 1,
+        label: state.vectorLabel !== undefined ? state.vectorLabel : '+5',
+        style: state.vectorStyle || 'arc',
+        height: state.vectorHeight !== undefined ? state.vectorHeight : 30,
+        thickness: state.vectorThickness !== undefined ? state.vectorThickness : 2.5,
+        color: state.colorVector || '#3B82F6'
+      })];
+    }
+    activeVectorId = vectors.some(vector => vector.id === state.activeVectorId)
+      ? state.activeVectorId
+      : (vectors[0]?.id || null);
+    showVectorEl.checked = Boolean(state.showVector && vectors.length);
+    if (activeVectorId) loadActiveVectorIntoControls();
+    renderVectorList();
     
     toggleArrowControlsVisibility();
     toggleArrowModeWrapper();
@@ -1716,18 +1965,20 @@ ${vectorMarkup}</svg>`;
 
     // Reset vector properties
     showVectorEl.checked = false;
-    vectorValAEl.value = 200;
-    vectorValASliderEl.value = 200;
-    vectorValACustomEl.value = 0;
-    vectorValBEl.value = 700;
-    vectorValBSliderEl.value = 700;
-    vectorValBCustomEl.value = 1;
-    vectorLabelEl.value = '+5';
-    vectorStyleEl.value = 'arc';
-    vectorHeightEl.value = 30;
-    vectorThicknessEl.value = 2.5;
-    colorVectorEl.value = '#3B82F6';
-    colorVectorTextEl.value = '#3B82F6';
+    vectors = [createVector({
+      valA: 200,
+      valB: 700,
+      customA: 0,
+      customB: 1,
+      label: '+5',
+      style: 'arc',
+      height: 30,
+      thickness: 2.5,
+      color: '#3B82F6'
+    })];
+    activeVectorId = vectors[0].id;
+    loadActiveVectorIntoControls();
+    renderVectorList();
     
     toggleArrowControlsVisibility();
     toggleArrowModeWrapper();
@@ -1889,18 +2140,20 @@ ${vectorMarkup}</svg>`;
 
     // Default vector properties
     showVectorEl.checked = false;
-    vectorValAEl.value = 200;
-    vectorValASliderEl.value = 200;
-    vectorValACustomEl.value = 0;
-    vectorValBEl.value = 700;
-    vectorValBSliderEl.value = 700;
-    vectorValBCustomEl.value = 1;
-    vectorLabelEl.value = '+5';
-    vectorStyleEl.value = 'arc';
-    vectorHeightEl.value = 30;
-    vectorThicknessEl.value = 2.5;
-    colorVectorEl.value = '#3B82F6';
-    colorVectorTextEl.value = '#3B82F6';
+    vectors = [createVector({
+      valA: 200,
+      valB: 700,
+      customA: 0,
+      customB: 1,
+      label: '+5',
+      style: 'arc',
+      height: 30,
+      thickness: 2.5,
+      color: '#3B82F6'
+    })];
+    activeVectorId = vectors[0].id;
+    loadActiveVectorIntoControls();
+    renderVectorList();
     
     toggleArrowControlsVisibility();
     toggleArrowModeWrapper();
