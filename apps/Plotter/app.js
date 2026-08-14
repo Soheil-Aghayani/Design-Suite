@@ -2195,33 +2195,6 @@ ${vectorMarkup}</svg>`;
   
   loadCustomPresetsList();
 
-  // ── Mobile sidebar toggle wiring ──
-  const _btnToggleLeft = document.getElementById('btn-toggle-left');
-  const _btnToggleRight = document.getElementById('btn-toggle-right');
-  const _mobileSidebarOverlay = document.getElementById('mobile-sidebar-overlay');
-  const _leftToolbar = document.querySelector('.left-toolbar');
-  const _rightSidebar = document.querySelector('.right-sidebar');
-
-  if (_btnToggleLeft && _btnToggleRight && _mobileSidebarOverlay) {
-    _btnToggleLeft.addEventListener('click', (e) => {
-      e.stopPropagation();
-      _leftToolbar.classList.toggle('open');
-      _rightSidebar.classList.remove('open');
-      _mobileSidebarOverlay.style.display = _leftToolbar.classList.contains('open') ? 'block' : 'none';
-    });
-    _btnToggleRight.addEventListener('click', (e) => {
-      e.stopPropagation();
-      _rightSidebar.classList.toggle('open');
-      _leftToolbar.classList.remove('open');
-      _mobileSidebarOverlay.style.display = _rightSidebar.classList.contains('open') ? 'block' : 'none';
-    });
-    _mobileSidebarOverlay.addEventListener('click', () => {
-      _leftToolbar.classList.remove('open');
-      _rightSidebar.classList.remove('open');
-      _mobileSidebarOverlay.style.display = 'none';
-    });
-  }
-
     // Navigation pill buttons logic removed safely
 
 
