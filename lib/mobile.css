@@ -89,6 +89,7 @@
   /* Keep this after the generic button rule so the scaled minimap stays tappable. */
   .minimap-toggle-btn {
     min-width: 56px;
-    min-height: 56px;
+    min-height: 56px !important;
+    height: 56px !important;
   }
 }
