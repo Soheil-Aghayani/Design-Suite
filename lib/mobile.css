@@ -32,6 +32,16 @@
     position: fixed;
   }
 
+  /* Prevent the off-canvas tool drawer's children from intercepting the backdrop. */
+  .left-toolbar {
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .left-toolbar.open {
+    pointer-events: auto;
+  }
+
   .right-sidebar {
     max-width: min(90vw, 360px);
   }
