@@ -83,6 +83,21 @@
     min-width: 44px;
   }
 
+  /* Custom switches hide the native input, so enlarge their label hit area too. */
+  .switch-container {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .switch-container .switch-slider {
+    top: 12px;
+    right: 10px;
+    bottom: 12px;
+    left: 0;
+  }
+
   /* Flowchart's minimap is scaled to 85% on phones; compensate the toggle hit area. */
   .minimap-toggle-btn {
     min-width: 56px;
