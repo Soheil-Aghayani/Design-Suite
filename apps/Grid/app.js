@@ -311,7 +311,8 @@ module.exports = {
       }
     }
   });
-  resizeObserver.observe(document.querySelector('.canvas-viewport'));
+  const responsiveViewport = document.querySelector('.canvas-viewport, .workspace-viewport');
+  if (responsiveViewport) resizeObserver.observe(responsiveViewport);
 
   // Initial Run
   registerInputEvents();

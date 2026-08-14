@@ -3,7 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Design Suite is a browser-based workspace for flowcharts, number lines, gradients, clocks, converters, and other practical visual design tools.">
+  <meta name="description" content="Design Suite is a free browser-based workspace for flowcharts, number lines, grids, gradients, clocks, converters, typography, and practical visual design tools.">
+  <meta name="author" content="Soheil Aghayani">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#f4f5f8">
+  <link rel="canonical" href="https://soheil-aghayani.github.io/Design-Suite/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Design Suite">
+  <meta property="og:title" content="Design Suite — Free Browser-Based Visual Tools">
+  <meta property="og:description" content="Create flowcharts, number lines, grids, gradients, clocks, typography systems, and more in one responsive workspace.">
+  <meta property="og:url" content="https://soheil-aghayani.github.io/Design-Suite/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Design Suite — Free Browser-Based Visual Tools">
+  <meta name="twitter:description" content="A free responsive workspace for diagrams, grids, graphics, and everyday visual tools.">
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Design Suite",
+      "url": "https://soheil-aghayani.github.io/Design-Suite/",
+      "description": "A free browser-based workspace for diagrams, grids, graphics, and practical visual design tools.",
+      "applicationCategory": "DesignApplication",
+      "operatingSystem": "Web",
+      "isAccessibleForFree": true,
+      "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+      "author": {"@type": "Person", "name": "Soheil Aghayani", "url": "https://github.com/Soheil-Aghayani"}
+    }
+  </script>
   <link rel="stylesheet" href="lib/mobile.css?v=20260814-320-switch">
   <title>Toolbar Design Suite - Workspace Hub</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
@@ -607,7 +633,7 @@
       <nav style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
         <ul class="nav-list" style="overflow-y: auto;">
           <li>
-            <a class="nav-item active" id="nav-home" data-tool="home">
+            <a class="nav-item active" id="nav-home" data-tool="home" href="./">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="7" height="9" rx="1"/>
                 <rect x="14" y="3" width="7" height="5" rx="1"/>
@@ -621,7 +647,7 @@
           <li class="toolbar-divider-item" aria-hidden="true"><div class="toolbar-divider"></div></li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-clock" data-tool="clock">
+            <a class="nav-item" id="nav-clock" data-tool="clock" href="apps/Clock/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
                 <polyline points="12 6 12 12 16 14"/>
@@ -631,7 +657,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-flowchart" data-tool="flowchart">
+            <a class="nav-item" id="nav-flowchart" data-tool="flowchart" href="apps/Flowchart/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="6" height="6" rx="1"/>
                 <rect x="15" y="15" width="6" height="6" rx="1"/>
@@ -642,7 +668,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-plotter" data-tool="plotter">
+            <a class="nav-item" id="nav-plotter" data-tool="plotter" href="apps/Plotter/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M3 12h18M6 8v8M12 5v14M18 8v8"/>
               </svg>
@@ -651,7 +677,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-slicer" data-tool="slicer">
+            <a class="nav-item" id="nav-slicer" data-tool="slicer" href="apps/Slicer/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 <line x1="9" y1="3" x2="9" y2="21"/>
@@ -660,8 +686,21 @@
             </a>
           </li>
 
+          <li>
+            <a class="nav-item" id="nav-grid" data-tool="grid" href="apps/Grid/index.html">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="3" y1="15" x2="21" y2="15"/>
+              </svg>
+              <span>Grid Calculator</span>
+            </a>
+          </li>
+
           <li class="desktop-only">
-            <a class="nav-item" id="nav-gradient" data-tool="gradient">
+            <a class="nav-item" id="nav-gradient" data-tool="gradient" href="apps/Gradient%20Maker/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7z"/>
@@ -671,7 +710,7 @@
           </li>
 
           <li>
-            <a class="nav-item" id="nav-secure" data-tool="secure">
+            <a class="nav-item" id="nav-secure" data-tool="secure" href="apps/Secure/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -681,7 +720,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-angle" data-tool="angle">
+            <a class="nav-item" id="nav-angle" data-tool="angle" href="apps/Angle%20Drawer/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 12 12 19 5"></polyline>
@@ -691,7 +730,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-percentbar" data-tool="percentbar">
+            <a class="nav-item" id="nav-percentbar" data-tool="percentbar" href="apps/Percentage%20Bar/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 6v6l4 2"/>
@@ -701,7 +740,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-puzzle" data-tool="puzzle">
+            <a class="nav-item" id="nav-puzzle" data-tool="puzzle" href="apps/Puzzle/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M11.75 3a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z"/>
                 <path d="M3.5 10.25h16.5"/>
@@ -711,7 +750,7 @@
           </li>
 
           <li>
-            <a class="nav-item" id="nav-convert" data-tool="convert">
+            <a class="nav-item" id="nav-convert" data-tool="convert" href="apps/Convert/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <polyline points="16 3 21 3 21 8"/>
                 <line x1="4" y1="20" x2="21" y2="3"/>
@@ -724,7 +763,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-colorstudio" data-tool="colorstudio">
+            <a class="nav-item" id="nav-colorstudio" data-tool="colorstudio" href="apps/Color%20Studio/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
                 <circle cx="7.5" cy="10.5" r="1.5"/>
@@ -736,7 +775,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-mesh" data-tool="mesh">
+            <a class="nav-item" id="nav-mesh" data-tool="mesh" href="apps/Mesh/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
@@ -746,7 +785,7 @@
           </li>
 
           <li class="desktop-only">
-            <a class="nav-item" id="nav-typo" data-tool="typo">
+            <a class="nav-item" id="nav-typo" data-tool="typo" href="apps/Typography/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <polyline points="4 7 4 4 20 4 20 7"/>
                 <line x1="9" y1="20" x2="15" y2="20"/>
@@ -757,7 +796,7 @@
           </li>
 
           <li>
-            <a class="nav-item" id="nav-steamcalc" data-tool="steamcalc">
+            <a class="nav-item" id="nav-steamcalc" data-tool="steamcalc" href="apps/Steam%20Calculator/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <rect x="2" y="4" width="20" height="16" rx="2"/>
                 <line x1="12" y1="4" x2="12" y2="20"/>
@@ -771,7 +810,7 @@
           </li>
 
           <li>
-            <a class="nav-item" id="nav-archive" data-tool="archive">
+            <a class="nav-item" id="nav-archive" data-tool="archive" href="apps/Archive%20Studio/index.html">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
                 <polyline points="7.5 4.21 12 6.81 16.5 4.21"/>
@@ -920,6 +959,30 @@
             </div>
             <div class="card-footer">
               <span>Launch Slicer</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="5" y1="12" x2="19" y2="12"/>
+                <polyline points="12 5 19 12 12 19"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Card: Grid Calculator -->
+          <div class="tool-card" data-tool="grid" style="--accent-gradient: linear-gradient(135deg, #0ea5e9, #6366f1);">
+            <div class="card-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="9" y1="3" x2="9" y2="21"/>
+                <line x1="15" y1="3" x2="15" y2="21"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="3" y1="15" x2="21" y2="15"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="card-title">Grid & Aspect Ratio</h2>
+              <p class="card-desc" style="margin-top: 8px;">Build responsive column grids, preview aspect ratios, and generate spacing scales with copy-ready CSS and Tailwind snippets.</p>
+            </div>
+            <div class="card-footer">
+              <span>Launch Grid Calculator</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <line x1="5" y1="12" x2="19" y2="12"/>
                 <polyline points="12 5 19 12 12 19"/>
@@ -1206,6 +1269,7 @@
         'flowchart': 'apps/Flowchart/index.html',
         'plotter': 'apps/Plotter/index.html',
         'slicer': 'apps/Slicer/index.html',
+        'grid': 'apps/Grid/index.html',
         'gradient': 'apps/Gradient Maker/index.html',
         'secure': 'apps/Secure/index.html',
         'angle': 'apps/Angle Drawer/index.html',
@@ -1224,6 +1288,7 @@
         'flowchart': 'Flowchart Builder Workspace',
         'plotter': 'Plotter - Premium Number Line Workspace',
         'slicer': 'Vector Image Slicer Workspace',
+        'grid': 'Grid & Aspect Ratio Calculator Workspace',
         'gradient': 'Gradient Maker Workspace',
         'secure': 'Security Tool Suite (CAPTCHA & XOR Cipher)',
         'angle': 'Angle Designer Workspace',
