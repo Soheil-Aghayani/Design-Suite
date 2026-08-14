@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Design Suite is a browser-based workspace for flowcharts, number lines, gradients, clocks, converters, and other practical visual design tools.">
   <title>Toolbar Design Suite - Workspace Hub</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-color: #f4f5f8;
@@ -52,7 +52,7 @@
     }
 
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background-color: var(--bg-color);
       color: var(--text-primary);
       height: 100vh;
@@ -103,7 +103,7 @@
     }
 
     .logo-title {
-      font-family: 'Outfit', sans-serif;
+      font-family: Outfit, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 16px;
       font-weight: 700;
       letter-spacing: -0.02em;
@@ -329,7 +329,7 @@
     }
 
     .hero-title {
-      font-family: 'Outfit', sans-serif;
+      font-family: Outfit, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 32px;
       font-weight: 700;
       letter-spacing: -0.03em;
@@ -409,7 +409,7 @@
     }
 
     .card-title {
-      font-family: 'Outfit', sans-serif;
+      font-family: Outfit, Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 18px;
       font-weight: 600;
       color: var(--text-primary);
@@ -481,6 +481,10 @@
 
     /* Mobile media queries */
     @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: flex !important;
+      }
+
       .sidebar {
         position: absolute;
         top: 0;
@@ -526,7 +530,11 @@
         padding: 20px !important;
       }
       .desktop-only {
-        display: none !important;
+        display: revert !important;
+      }
+
+      .tool-card.desktop-only {
+        display: flex !important;
       }
     }
 
@@ -572,7 +580,7 @@
 <body>
   <div class="app-layout">
     <!-- Mobile Menu Toggle Button -->
-    <button class="mobile-menu-toggle" id="menu-toggle-btn" style="display: none;">
+    <button class="mobile-menu-toggle" id="menu-toggle-btn" type="button" aria-label="Open navigation menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <line x1="3" y1="12" x2="21" y2="12"/>
         <line x1="3" y1="6" x2="21" y2="6"/>
@@ -610,7 +618,7 @@
             </a>
           </li>
           
-          <div class="toolbar-divider"></div>
+          <li class="toolbar-divider-item" aria-hidden="true"><div class="toolbar-divider"></div></li>
 
           <li class="desktop-only">
             <a class="nav-item" id="nav-clock" data-tool="clock">
@@ -779,7 +787,7 @@
 
       <!-- Sidebar bottom footer -->
       <div class="sidebar-footer">
-        <span style="font-size: 10px; font-family: 'JetBrains Mono'; color: var(--text-muted);">V2.5.0</span>
+        <span style="font-size: 10px; font-family: JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text-muted);">V2.5.0</span>
         <button class="theme-toggle-btn" id="theme-switcher" title="Toggle Light/Dark Workspace">
           <!-- Sun Icon -->
           <svg id="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
@@ -1167,7 +1175,7 @@
 
       <!-- Iframe viewport wrapper -->
       <div class="tool-frame-container" id="tool-frame-container">
-        <iframe class="tool-iframe" id="tool-iframe" allow="local-fonts"></iframe>
+        <iframe class="tool-iframe" id="tool-iframe" title="Design Suite tool workspace" allow="local-fonts"></iframe>
       </div>
     </main>
   </div>
@@ -1361,6 +1369,7 @@
         const isOpen = open === undefined ? !sidebar.classList.contains('open') : open;
         sidebar.classList.toggle('open', isOpen);
         sidebarOverlay.style.display = isOpen ? 'block' : 'none';
+        menuToggleBtn.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
         
         if (isOpen) {
           menuToggleBtn.innerHTML = `
