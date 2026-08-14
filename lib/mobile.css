@@ -1,0 +1,67 @@
+/* Shared mobile layout and touch-target fixes for the standalone workspaces. */
+@media (max-width: 768px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Keep the drawing surface present when the app switches to a column layout. */
+  .app-container {
+    min-height: 0;
+  }
+
+  .canvas-container {
+    flex: 0 0 500px;
+    width: 100%;
+    min-width: 0;
+    min-height: 500px;
+    height: 500px;
+  }
+
+  .canvas-viewport,
+  .workspace-viewport {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Drawers must not participate in document width while they are closed. */
+  .left-toolbar,
+  .right-sidebar,
+  .sidebar-overlay {
+    position: fixed;
+  }
+
+  .right-sidebar {
+    max-width: min(90vw, 360px);
+  }
+
+  .sidebar-tabs {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  /* Make the controls comfortable to tap without changing desktop sizing. */
+  .tool-btn,
+  .mobile-toggle-btn,
+  .vector-icon-btn,
+  .delete-preset-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .tab-btn,
+  .btn,
+  .action-btn,
+  button:not(.tool-btn):not(.mobile-toggle-btn):not(.delete-preset-btn),
+  input:not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    min-height: 44px;
+  }
+
+  input[type="color"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
