@@ -67,8 +67,8 @@
 
   /* Flowchart's minimap is scaled to 85% on phones; compensate the toggle hit area. */
   .minimap-toggle-btn {
-    min-width: 52px;
-    min-height: 52px;
+    min-width: 56px;
+    min-height: 56px;
   }
 
   .tab-btn,
