@@ -45,9 +45,24 @@
   .tool-btn,
   .mobile-toggle-btn,
   .vector-icon-btn,
-  .delete-preset-btn {
+  .delete-preset-btn,
+  .vector-visibility-btn,
+  .locate-node-btn,
+  .minimap-toggle-btn,
+  .modal-close-btn,
+  .theme-toggle-btn,
+  .mobile-menu-toggle {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  input[type="range"] {
+    min-height: 44px;
+    touch-action: pan-x;
+  }
+
+  input[type="checkbox"] {
+    min-width: 44px;
   }
 
   .tab-btn,
