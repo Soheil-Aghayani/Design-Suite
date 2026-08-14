@@ -8,7 +8,14 @@
 
   /* Keep the drawing surface present when the app switches to a column layout. */
   .app-container {
+    width: 100%;
+    min-width: 0;
     min-height: 0;
+  }
+
+  /* Keep the hub's off-canvas navigation comfortably tappable on narrow phones. */
+  .nav-item {
+    min-height: 44px;
   }
 
   .canvas-container {
