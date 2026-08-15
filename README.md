@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/readme-hero.svg" alt="Design Suite visual hero" width="100%">
+
 # Design Suite
 
 ### A focused workspace for diagrams, graphics, number lines, and everyday visual tools.
